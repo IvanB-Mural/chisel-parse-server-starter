@@ -994,6 +994,112 @@ const generateAudioJWT = async (userID, vulcanSpaceId, spaceName) => {
   }
 };
 
+const setupDefaultZones = async (space_id, zonesParams) => {
+  try {
+    const response = await axios.post(
+      `https://api.highfidelity.com/api/v1/spaces/${space_id}/settings/zones?token=${hifiAudioConfig.adminToken}`,
+      zonesParams
+    );
+    if (!response.data || !response.data.length) return null;
+    return response.data;
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+};
+const setupDefaultAttenuations = async (space_id, attsParams) => {
+  try {
+    const response = await axios.post(
+      `https://api.highfidelity.com/api/v1/spaces/${space_id}/settings/zone_attenuations?token=${hifiAudioConfig.adminToken}`,
+      attsParams
+    );
+    if (!response.data || !response.data.length) return null;
+    return response.data;
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+};
+
+const GENERAL_ZONE_DIMENSIONS = {
+  "x-min": 0,
+  "x-max": 1,
+  "y-min": 0,
+  "y-max": 1,
+  "z-min": 2,
+  "z-max": 2,
+};
+const MURAL_ZONE_DIMENSIONS = {
+  "x-min": 0,
+  "x-max": 1000,
+  "y-min": 0,
+  "y-max": 1000,
+  "z-min": 0,
+  "z-max": 0,
+};
+
+Parse.Cloud.define("setupDefaultZones", async (request) => {
+  const { vulcanSpaceId } = request.params;
+
+  const zones = await setupDefaultZones(vulcanSpaceId, [
+    {
+      name: `${vulcanSpaceId}_mural`,
+      ...MURAL_ZONE_DIMENSIONS,
+    },
+    {
+      name: `${vulcanSpaceId}_general_channel`,
+      ...GENERAL_ZONE_DIMENSIONS,
+    },
+  ]);
+
+  console.log(">> ZONES: ", zones);
+
+  const atts = [
+    {
+      "source-zone-id": zones[1]["id"], // general channel
+      "listener-zone-id": zones[0]["id"], // mural
+      attenuation: 0.05, // low attenuation == sound is very audible
+      "za-offset": 1,
+    },
+    // {
+    //   "source-zone-id": zones[0]["id"], // mural
+    //   "listener-zone-id": zones[1]["id"], // general channel
+    //   attenuation: 0.95,
+    //   "za-offset": 2,
+    // },
+  ];
+
+  const attsResult = await setupDefaultAttenuations(vulcanSpaceId, atts);
+  console.log(">> ATTS: ", attsResult);
+});
+
+Parse.Cloud.define("playGeneralZone", async (request) => {
+  const { vulcanSpaceId, spaceName, objectId, audioFileName, hiFiGain } =
+    request.params;
+  // Generate the JWT used to connect to our High Fidelity Space.
+  let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
+  if (!hiFiJWT) {
+    return;
+  }
+  const GZD = GENERAL_ZONE_DIMENSIONS;
+  await startAudioBox(
+    `./music/${audioFileName}.mp3`,
+    { x: GZD["x-min"], y: GZD["y-min"], z: GZD["z-min"] },
+    hiFiGain,
+    hiFiJWT
+  );
+});
+
+Parse.Cloud.define("stopGeneralZone", async (request) => {
+  const { vulcanSpaceId, spaceName, objectId } = request.params;
+  // Generate the JWT used to connect to our High Fidelity Space.
+  let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
+  if (!hiFiJWT) {
+    return;
+  }
+  await stopAudioBox(hiFiJWT);
+});
+
 Parse.Cloud.define("startAudioBox", async (request) => {
   const { vulcanSpaceId, spaceName, objectId, audioFileName, hiFiGain, x, y } =
     request.params;
