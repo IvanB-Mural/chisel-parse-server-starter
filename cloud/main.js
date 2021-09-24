@@ -1053,7 +1053,7 @@ Parse.Cloud.define("setupDefaultZones", async (request) => {
   ]);
 
   console.log(">> ZONES: ", zones);
-
+  /*
   const atts = [
     {
       "source-zone-id": zones[1]["id"], // general channel
@@ -1071,6 +1071,7 @@ Parse.Cloud.define("setupDefaultZones", async (request) => {
 
   const attsResult = await setupDefaultAttenuations(vulcanSpaceId, atts);
   console.log(">> ATTS: ", attsResult);
+  */
 });
 
 Parse.Cloud.define("playGeneralZone", async (request) => {
@@ -1101,8 +1102,16 @@ Parse.Cloud.define("stopGeneralZone", async (request) => {
 });
 
 Parse.Cloud.define("startAudioBox", async (request) => {
-  const { vulcanSpaceId, spaceName, objectId, audioFileName, hiFiGain, x, y } =
-    request.params;
+  const {
+    vulcanSpaceId,
+    spaceName,
+    objectId,
+    audioFileName,
+    hiFiGain,
+    x,
+    y,
+    isBroadcast,
+  } = request.params;
   // Generate the JWT used to connect to our High Fidelity Space.
   let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
   if (!hiFiJWT) {
@@ -1112,7 +1121,8 @@ Parse.Cloud.define("startAudioBox", async (request) => {
     `./music/${audioFileName}.mp3`,
     { x, y, z: 0 },
     hiFiGain,
-    hiFiJWT
+    hiFiJWT,
+    isBroadcast
   );
   // return hifiCommunicator;
 });
@@ -1134,7 +1144,13 @@ Parse.Cloud.define("stopAudioBox", async (request) => {
  * @param {object} position - The {x, y, z} point at which to spatialize the audio.
  * @param {number} hiFiGain - Set above 1 to boost the volume of the bot, or set below 1 to attenuate the volume of the bot.
  */
-async function startAudioBox(audioPath, position, hiFiGain, hiFiJWT) {
+async function startAudioBox(
+  audioPath,
+  position,
+  hiFiGain,
+  hiFiJWT,
+  isBroadcast = false
+) {
   // Make sure we've been passed an `audioPath`...
   if (!audioPath) {
     console.error(
@@ -1193,12 +1209,21 @@ Instead, it's a \`${audioFileExtension}\``);
     source = new RTCAudioSource(),
     track = source.createTrack(),
     // This is the final `MediaStream` sent to the server. The data within that `MediaStream` will be updated on an interval.
-    inputAudioMediaStream = new MediaStream([track]),
-    // Define the initial HiFi Audio API Data used when connecting to the Spatial Audio API.
-    initialHiFiAudioAPIData = new HiFiAudioAPIData({
-      position: new Point3D(position),
-      hiFiGain: hiFiGain,
-    }),
+    inputAudioMediaStream = new MediaStream([track]);
+
+  const initData = {
+    position: new Point3D(position),
+    hiFiGain: hiFiGain,
+  };
+
+  // set extremely small attanuation effectively making the source to broadcast
+  if (isBroadcast) {
+    initData.userAttenuation = 0.0000000001;
+    initData.userRolloff = 9999999999;
+  }
+
+  // Define the initial HiFi Audio API Data used when connecting to the Spatial Audio API.
+  const initialHiFiAudioAPIData = new HiFiAudioAPIData(initData),
     // Set up the HiFiCommunicator used to communicate with the Spatial Audio API.
     hifiCommunicator = new HiFiCommunicator({ initialHiFiAudioAPIData });
 
