@@ -33,7 +33,7 @@ const GRAPHQL_SERVER  = process.env.GRAPHQL_SERVER_URL    || parseConfig.GraphQL
 const URL_DB          = process.env.DATABASE_URI  ||
                     process.env.MONGODB_URI   || parseConfig.URLdb;
 const URL_SITE        = process.env.SITE_URL      || parseConfig.URLsite;
-const APP_ID          = process.env.PARSE_APP_ID        || parseConfig.appId;
+const APP_ID          = process.env.APP_ID        || parseConfig.appId;
 const MASTER_KEY      = process.env.PARSE_MASTER_KEY    || parseConfig.masterKey;
 
 const DASHBOARD_ACTIVATED = process.env.DASHBOARD_ACTIVATED || config.extraConfig.dashboardActivated;
