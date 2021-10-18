@@ -1054,8 +1054,6 @@ Parse.Cloud.define("setupDefaultZones", async (request) => {
 
   console.log(">> ZONES: ", zones);
   
-  return zones;
-  /*
   const atts = [
     {
       "source-zone-id": zones[1]["id"], // general channel
@@ -1063,16 +1061,18 @@ Parse.Cloud.define("setupDefaultZones", async (request) => {
       attenuation: 0.05, // low attenuation == sound is very audible
       "za-offset": 1,
     },
-    // {
-    //   "source-zone-id": zones[0]["id"], // mural
-    //   "listener-zone-id": zones[1]["id"], // general channel
-    //   attenuation: 0.95,
-    //   "za-offset": 2,
-    // },
+    {
+      "source-zone-id": zones[0]["id"], // mural
+      "listener-zone-id": zones[1]["id"], // general channel
+      attenuation: 0.95,
+      "za-offset": 2,
+    },
   ];
 
   const attsResult = await setupDefaultAttenuations(vulcanSpaceId, atts);
   console.log(">> ATTS: ", attsResult);
+  
+  return attsResult;
   */
 });
 
