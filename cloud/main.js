@@ -1039,17 +1039,15 @@ const MURAL_ZONE_DIMENSIONS = {
 };
 
 Parse.Cloud.define("setupDefaultZones", async (request) => {
-  const { vulcanSpaceId, spaceName } = request.params;
+  const { vulcanSpaceId } = request.params;
 
-  const spaceId = await findOrGenerateSpace(vulcanSpaceId, spaceName);
-
-  const zones = await setupDefaultZones(spaceId, [
+  const zones = await setupDefaultZones(vulcanSpaceId, [
     {
-      name: `${spaceId}_mural`,
+      name: `${vulcanSpaceId}_mural`,
       ...MURAL_ZONE_DIMENSIONS,
     },
     {
-      name: `${spaceId}_general_channel`,
+      name: `${vulcanSpaceId}_general_channel`,
       ...GENERAL_ZONE_DIMENSIONS,
     },
   ]);
