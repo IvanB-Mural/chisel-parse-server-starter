@@ -1053,6 +1053,8 @@ Parse.Cloud.define("setupDefaultZones", async (request) => {
   ]);
 
   console.log(">> ZONES: ", zones);
+  
+  return zones;
   /*
   const atts = [
     {
