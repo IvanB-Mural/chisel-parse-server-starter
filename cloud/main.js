@@ -1073,7 +1073,6 @@ Parse.Cloud.define("setupDefaultZones", async (request) => {
   console.log(">> ATTS: ", attsResult);
   
   return attsResult;
-  */
 });
 
 Parse.Cloud.define("playGeneralZone", async (request) => {
