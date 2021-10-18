@@ -1003,7 +1003,7 @@ const setupDefaultZones = async (space_id, zonesParams) => {
     if (!response.data || !response.data.length) return null;
     return response.data;
   } catch (e) {
-    console.error(e);
+    console.error(`https://api.highfidelity.com/api/v1/spaces/${space_id}/settings/zones?token=${hifiAudioConfig.adminToken}`);
     throw e;
   }
 };
