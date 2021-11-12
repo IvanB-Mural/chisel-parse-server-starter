@@ -4,3 +4,5 @@ npm-debug.log
 .idea
 parse-dashboard-config.json
 .env
+config.json
+package-lock.json

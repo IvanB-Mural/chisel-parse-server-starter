@@ -929,6 +929,28 @@ const generateSpace = async (vulcanSpaceId, name) => {
   }
 };
 
+const getSpace = async (vulcanSpaceId) => {
+  const SPACE_MAPPING_MODEL = "SpaceMapping";
+  try {
+    // Find the existing one first.
+    const spaceQuery = new Parse.Query(SPACE_MAPPING_MODEL);
+    spaceQuery.equalTo("vulcan_space_id", vulcanSpaceId);
+    const spaceRecord = await spaceQuery.first({ useMasterKey: true });
+    if (!spaceRecord || !spaceRecord.get("space_token")) {
+      return "No space!";
+    }
+    return spaceRecord.get("space_token");
+  } catch (e) {
+    console.log("error in findOrGenerateSpace", e);
+  }
+};
+
+Parse.Cloud.define("getSpace", async (request) => {
+  const { vulcanSpaceId } = request.params;
+  const spaceToken = await getSpace(vulcanSpaceId);
+  return spaceToken;
+});
+
 // Hifi Spatial Audio Token
 // - Check Parse server for existing space token, return if found
 // - generate one if doesn't exist,
