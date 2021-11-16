@@ -5,7 +5,7 @@ const {
   ROLE_ADMIN,
   ROLE_EDITOR,
   promisifyW,
-  getAllObjects,
+  getAllObjects
 } = require("./common");
 
 const { getPayPlan } = require("./payment");
@@ -15,7 +15,7 @@ const crypto = require("crypto");
 const axios = require("axios");
 const {
   MediaStream,
-  nonstandard: { RTCAudioSource },
+  nonstandard: { RTCAudioSource }
 } = require("wrtc"); // Used to create the `MediaStream` containing your DJ Bot's audio.
 const fs = require("fs"); // Used to read the specified audio file from your local disk.
 const path = require("path"); // Used to verify that the specified audio file is an MP3 or WAV file.
@@ -26,12 +26,12 @@ import {
   Point3D,
   HiFiAudioAPIData,
   HiFiCommunicator,
-  preciseInterval,
+  preciseInterval
 } from "hifi-spatial-audio"; // Used to interface with the Spatial Audio API.
 require("./users_code");
 
 // Get Site nameId to generate Model names
-const getSiteNameId = async (siteId) => {
+const getSiteNameId = async siteId => {
   const siteQuery = new Parse.Query("Site");
   siteQuery.equalTo("objectId", siteId);
   const siteRecord = await siteQuery.first({ useMasterKey: true });
@@ -39,7 +39,7 @@ const getSiteNameId = async (siteId) => {
   return siteRecord.get("nameId");
 };
 
-Parse.Cloud.define("myTalks", async (request) => {
+Parse.Cloud.define("myTalks", async request => {
   const { participant, siteId } = request.params;
   try {
     if (!participant) return { status: "error", message: "Insufficient Data!" };
@@ -89,12 +89,12 @@ const getMyTalks = async (participant, siteId) => {
 
     let myTalks = [];
     if (myParseTalks) {
-      myTalks = myParseTalks.map((parseTalk) => ({
+      myTalks = myParseTalks.map(parseTalk => ({
         id: parseTalk.id,
         start: parseTalk.get("start"),
         end: parseTalk.get("end"),
         title: parseTalk.get("title"),
-        slug: parseTalk.get("slug"),
+        slug: parseTalk.get("slug")
       }));
     }
     return myTalks;
@@ -104,7 +104,7 @@ const getMyTalks = async (participant, siteId) => {
   }
 };
 
-Parse.Cloud.define("joinTalk", async (request) => {
+Parse.Cloud.define("joinTalk", async request => {
   const { slug, participantId, siteId } = request.params;
   try {
     if (!participantId || !slug)
@@ -185,7 +185,7 @@ Parse.Cloud.define("joinTalk", async (request) => {
       }
       talkWrapParseObject.set("Participants", [
         ...(talkWrapParseObject.get("Participants") || []),
-        user,
+        user
       ]);
     }
     await talkWrapParseObject.save();
@@ -198,7 +198,7 @@ Parse.Cloud.define("joinTalk", async (request) => {
   }
 });
 
-Parse.Cloud.define("dropTalk", async (request) => {
+Parse.Cloud.define("dropTalk", async request => {
   const { slug, participantId, siteId } = request.params;
   try {
     if (!participantId || !slug)
@@ -242,7 +242,7 @@ Parse.Cloud.define("dropTalk", async (request) => {
     // Drop by participantId
     const participants = talkWrapParseObject.get("Participants");
     const filteredParticipants = participants.filter(
-      (participant) => participant.id !== participantId
+      participant => participant.id !== participantId
     );
     talkWrapParseObject.set("Participants", filteredParticipants);
     await talkWrapParseObject.save();
@@ -285,7 +285,7 @@ const checkRights = (user, obj) => {
   return (read && write) || (pRead && pWrite);
 };
 
-const getTableData = async (table) => {
+const getTableData = async table => {
   const endpoint = "/schemas/" + table;
 
   try {
@@ -297,8 +297,8 @@ const getTableData = async (table) => {
       headers: {
         "Content-Type": "application/json",
         "X-Parse-Application-Id": config.appId,
-        "X-Parse-Master-Key": config.masterKey,
-      },
+        "X-Parse-Master-Key": config.masterKey
+      }
     });
 
     if (response.status == 200) return response.data;
@@ -318,15 +318,15 @@ const setTableData = async (table, data, method = "POST") => {
     headers: {
       "Content-Type": "application/json",
       "X-Parse-Application-Id": config.appId,
-      "X-Parse-Master-Key": config.masterKey,
+      "X-Parse-Master-Key": config.masterKey
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(data)
   });
 
   if (response.status != 200) throw response.status;
 };
 
-const deleteTable = async (table) => {
+const deleteTable = async table => {
   const endpoint = "/schemas/" + table;
 
   const response = await Parse.Cloud.httpRequest({
@@ -337,8 +337,8 @@ const deleteTable = async (table) => {
     headers: {
       "Content-Type": "application/json",
       "X-Parse-Application-Id": config.appId,
-      "X-Parse-Master-Key": config.masterKey,
-    },
+      "X-Parse-Master-Key": config.masterKey
+    }
   });
 
   if (response.status != 200) throw response.status;
@@ -346,7 +346,7 @@ const deleteTable = async (table) => {
 
 const deleteContentItem = async (user, tableName, itemId) => {
   const item = await new Parse.Query(tableName).get(itemId, {
-    useMasterKey: true,
+    useMasterKey: true
   });
 
   if (!checkRights(user, item)) throw "Access denied!";
@@ -456,7 +456,7 @@ const deleteModel = async (
   if (deleteModel) await model.destroy({ useMasterKey: true });
 };
 
-Parse.Cloud.define("deleteContentItem", async (request) => {
+Parse.Cloud.define("deleteContentItem", async request => {
   if (!request.user) throw "Must be signed in to call this Cloud Function.";
 
   const { tableName, itemId } = request.params;
@@ -470,7 +470,7 @@ Parse.Cloud.define("deleteContentItem", async (request) => {
   }
 });
 
-Parse.Cloud.beforeDelete(`Model`, async (request) => {
+Parse.Cloud.beforeDelete(`Model`, async request => {
   if (request.master) return;
 
   try {
@@ -480,7 +480,7 @@ Parse.Cloud.beforeDelete(`Model`, async (request) => {
   }
 });
 
-Parse.Cloud.beforeDelete(`Site`, async (request) => {
+Parse.Cloud.beforeDelete(`Site`, async request => {
   if (request.master) return;
 
   const site = request.object;
@@ -602,7 +602,7 @@ const onCollaborationModify = async (collab, deleting = false) => {
 
     const tableName = model.get("tableName");
     //!! uncontrolled async operation
-    getTableData(tableName).then((response) => {
+    getTableData(tableName).then(response => {
       let CLP = response ? response.classLevelPermissions : null;
       if (!CLP)
         CLP = {
@@ -611,7 +611,7 @@ const onCollaborationModify = async (collab, deleting = false) => {
           create: {},
           update: {},
           delete: {},
-          addField: {},
+          addField: {}
         };
 
       if (!deleting) {
@@ -664,7 +664,7 @@ const onCollaborationModify = async (collab, deleting = false) => {
   }
 };
 
-Parse.Cloud.beforeSave("Collaboration", async (request) => {
+Parse.Cloud.beforeSave("Collaboration", async request => {
   if (request.master) return;
 
   const collab = request.object;
@@ -673,7 +673,7 @@ Parse.Cloud.beforeSave("Collaboration", async (request) => {
   return onCollaborationModify(collab);
 });
 
-Parse.Cloud.beforeDelete("Collaboration", async (request) => {
+Parse.Cloud.beforeDelete("Collaboration", async request => {
   if (request.master) return;
 
   const collab = request.object;
@@ -682,13 +682,13 @@ Parse.Cloud.beforeDelete("Collaboration", async (request) => {
   return onCollaborationModify(collab, true);
 });
 
-Parse.Cloud.beforeSave(Parse.User, (request) => {
+Parse.Cloud.beforeSave(Parse.User, request => {
   const user = request.object;
   const email = user.get("email");
   if (user.get("username") != email) user.set("username", email);
 });
 
-Parse.Cloud.afterSave(Parse.User, async (request) => {
+Parse.Cloud.afterSave(Parse.User, async request => {
   const user = request.object;
 
   const collabs = await new Parse.Query("Collaboration")
@@ -710,7 +710,7 @@ Parse.Cloud.afterSave(Parse.User, async (request) => {
   await Promise.all(promises);
 });
 
-Parse.Cloud.beforeSave("Site", async (request) => {
+Parse.Cloud.beforeSave("Site", async request => {
   if (request.master) return;
 
   //updating an existing site
@@ -734,7 +734,7 @@ Parse.Cloud.beforeSave("Site", async (request) => {
   return true;
 });
 
-Parse.Cloud.beforeSave(`Model`, async (request) => {
+Parse.Cloud.beforeSave(`Model`, async request => {
   if (request.master) return;
 
   const model = request.object;
@@ -778,7 +778,7 @@ Parse.Cloud.beforeSave(`Model`, async (request) => {
     create: {},
     update: {},
     delete: {},
-    addField: {},
+    addField: {}
   };
 
   for (let user of all) {
@@ -798,7 +798,7 @@ Parse.Cloud.beforeSave(`Model`, async (request) => {
   await setTableData(model.get("tableName"), data);
 });
 
-Parse.Cloud.beforeSave(`ModelField`, async (request) => {
+Parse.Cloud.beforeSave(`ModelField`, async request => {
   if (request.master) return;
 
   const field = request.object;
@@ -831,7 +831,7 @@ Parse.Cloud.beforeSave(`ModelField`, async (request) => {
   field.setACL(fieldACL);
 });
 
-Parse.Cloud.beforeSave(`MediaItem`, async (request) => {
+Parse.Cloud.beforeSave(`MediaItem`, async request => {
   if (request.master) return;
 
   const item = request.object;
@@ -861,7 +861,7 @@ Parse.Cloud.beforeSave(`MediaItem`, async (request) => {
   item.setACL(itemACL);
 });
 
-Parse.Cloud.define("onContentModify", async (request) => {
+Parse.Cloud.define("onContentModify", async request => {
   if (!request.user) throw "Must be signed in to call this Cloud Function.";
 
   const { URL } = request.params;
@@ -869,14 +869,14 @@ Parse.Cloud.define("onContentModify", async (request) => {
 
   const response = await Parse.Cloud.httpRequest({
     url: URL,
-    method: "GET",
+    method: "GET"
   });
 
   if (response.status == 200) return response.data;
   else throw response.status;
 });
 
-Parse.Cloud.define("inviteUser", async (request) => {
+Parse.Cloud.define("inviteUser", async request => {
   if (!request.user) throw "Must be signed in to call this Cloud Function.";
 
   const { email, siteName } = request.params;
@@ -894,7 +894,7 @@ Parse.Cloud.define("inviteUser", async (request) => {
     await emailAdapter.send({
       templateName: "inviteEmail",
       recipient: email,
-      variables: { siteName, emailSelf, link },
+      variables: { siteName, emailSelf, link }
     });
     console.log(`Invite sent to ${email} ${new Date()}`);
     return "Invite email sent!";
@@ -904,7 +904,7 @@ Parse.Cloud.define("inviteUser", async (request) => {
   }
 });
 
-Parse.Cloud.define("checkPassword", (request) => {
+Parse.Cloud.define("checkPassword", request => {
   if (!request.user) throw "Must be signed in to call this Cloud Function.";
 
   const { password } = request.params;
@@ -929,7 +929,7 @@ const generateSpace = async (vulcanSpaceId, name) => {
   }
 };
 
-const getSpace = async (vulcanSpaceId) => {
+const getSpace = async vulcanSpaceId => {
   const SPACE_MAPPING_MODEL = "SpaceMapping";
   try {
     // Find the existing one first.
@@ -945,7 +945,7 @@ const getSpace = async (vulcanSpaceId) => {
   }
 };
 
-Parse.Cloud.define("getSpace", async (request) => {
+Parse.Cloud.define("getSpace", async request => {
   const { vulcanSpaceId } = request.params;
   const spaceToken = await getSpace(vulcanSpaceId);
   return spaceToken;
@@ -986,7 +986,7 @@ const findOrGenerateSpace = async (vulcanSpaceId, name) => {
 // Cloud function : End point for users for JWT token
 // - find or generate spce id first
 // - generate JWT with above space Id and given user ID
-Parse.Cloud.define("generateAudioJWT", async (request) => {
+Parse.Cloud.define("generateAudioJWT", async request => {
   const { userID, vulcanSpaceId, spaceName } = request.params;
   const hifiJWT = await generateAudioJWT(userID, vulcanSpaceId, spaceName);
   return hifiJWT;
@@ -1004,7 +1004,7 @@ const generateAudioJWT = async (userID, vulcanSpaceId, spaceName) => {
     hiFiJWT = await new SignJWT({
       user_id: userID,
       app_id: hifiAudioConfig.appId,
-      space_id: spaceId,
+      space_id: spaceId
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .sign(SECRET_KEY_FOR_SIGNING);
@@ -1025,7 +1025,9 @@ const setupDefaultZones = async (space_id, zonesParams) => {
     if (!response.data || !response.data.length) return null;
     return response.data;
   } catch (e) {
-    console.error(`https://api.highfidelity.com/api/v1/spaces/${space_id}/settings/zones?token=${hifiAudioConfig.adminToken}`);
+    console.error(
+      `https://api.highfidelity.com/api/v1/spaces/${space_id}/settings/zones?token=${hifiAudioConfig.adminToken}`
+    );
     throw e;
   }
 };
@@ -1049,7 +1051,7 @@ const GENERAL_ZONE_DIMENSIONS = {
   "y-min": 0,
   "y-max": 1,
   "z-min": 2,
-  "z-max": 2,
+  "z-max": 2
 };
 const MURAL_ZONE_DIMENSIONS = {
   "x-min": 0,
@@ -1057,49 +1059,54 @@ const MURAL_ZONE_DIMENSIONS = {
   "y-min": 0,
   "y-max": 1000,
   "z-min": 0,
-  "z-max": 0,
+  "z-max": 0
 };
 
-Parse.Cloud.define("setupDefaultZones", async (request) => {
+Parse.Cloud.define("setupDefaultZones", async request => {
   const { vulcanSpaceId } = request.params;
 
   const zones = await setupDefaultZones(vulcanSpaceId, [
     {
       name: `${vulcanSpaceId}_mural`,
-      ...MURAL_ZONE_DIMENSIONS,
+      ...MURAL_ZONE_DIMENSIONS
     },
     {
       name: `${vulcanSpaceId}_general_channel`,
-      ...GENERAL_ZONE_DIMENSIONS,
-    },
+      ...GENERAL_ZONE_DIMENSIONS
+    }
   ]);
 
   console.log(">> ZONES: ", zones);
-  
+
   const atts = [
     {
       "source-zone-id": zones[1]["id"], // general channel
       "listener-zone-id": zones[0]["id"], // mural
       attenuation: 0.05, // low attenuation == sound is very audible
-      "za-offset": 1,
+      "za-offset": 1
     },
     {
       "source-zone-id": zones[0]["id"], // mural
       "listener-zone-id": zones[1]["id"], // general channel
       attenuation: 0.95,
-      "za-offset": 2,
-    },
+      "za-offset": 2
+    }
   ];
 
   const attsResult = await setupDefaultAttenuations(vulcanSpaceId, atts);
   console.log(">> ATTS: ", attsResult);
-  
+
   return attsResult;
 });
 
-Parse.Cloud.define("playGeneralZone", async (request) => {
-  const { vulcanSpaceId, spaceName, objectId, audioFileName, hiFiGain } =
-    request.params;
+Parse.Cloud.define("playGeneralZone", async request => {
+  const {
+    vulcanSpaceId,
+    spaceName,
+    objectId,
+    audioFileName,
+    hiFiGain
+  } = request.params;
   // Generate the JWT used to connect to our High Fidelity Space.
   let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
   if (!hiFiJWT) {
@@ -1114,7 +1121,7 @@ Parse.Cloud.define("playGeneralZone", async (request) => {
   );
 });
 
-Parse.Cloud.define("stopGeneralZone", async (request) => {
+Parse.Cloud.define("stopGeneralZone", async request => {
   const { vulcanSpaceId, spaceName, objectId } = request.params;
   // Generate the JWT used to connect to our High Fidelity Space.
   let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
@@ -1124,7 +1131,7 @@ Parse.Cloud.define("stopGeneralZone", async (request) => {
   await stopAudioBox(hiFiJWT);
 });
 
-Parse.Cloud.define("startAudioBox", async (request) => {
+Parse.Cloud.define("startAudioBox", async request => {
   const {
     vulcanSpaceId,
     spaceName,
@@ -1133,7 +1140,7 @@ Parse.Cloud.define("startAudioBox", async (request) => {
     hiFiGain,
     x,
     y,
-    isBroadcast,
+    isBroadcast
   } = request.params;
   // Generate the JWT used to connect to our High Fidelity Space.
   let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
@@ -1150,7 +1157,7 @@ Parse.Cloud.define("startAudioBox", async (request) => {
   // return hifiCommunicator;
 });
 
-Parse.Cloud.define("stopAudioBox", async (request) => {
+Parse.Cloud.define("stopAudioBox", async request => {
   const { vulcanSpaceId, spaceName, objectId } = request.params;
   // Generate the JWT used to connect to our High Fidelity Space.
   let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
@@ -1226,7 +1233,7 @@ Instead, it's a \`${audioFileExtension}\``);
       sampleRate,
       bitsPerSample: BITS_PER_SAMPLE,
       channelCount: numberOfChannels,
-      numberOfFrames: SAMPLES_PER_TICK,
+      numberOfFrames: SAMPLES_PER_TICK
     },
     // The `MediaStream` sent to the server consists of an "Audio Source" and, within that Source, a single "Audio Track".
     source = new RTCAudioSource(),
@@ -1236,7 +1243,7 @@ Instead, it's a \`${audioFileExtension}\``);
 
   const initData = {
     position: new Point3D(position),
-    hiFiGain: hiFiGain,
+    hiFiGain: hiFiGain
   };
 
   // set extremely small attanuation effectively making the source to broadcast
@@ -1321,3 +1328,39 @@ ${JSON.stringify(e)}`);
     return;
   }
 }
+
+const createAudioRoomObject = async (muralId, widgetId) => {
+  const AudioRoom = await Parse.Object.extend(AUDIO_ROOM_MODEL);
+  const newRoom = new AudioRoom();
+  newRoom.set("widgetId", widgetId);
+  newRoom.set("muralId", muralId);
+  return newRoom;
+};
+
+const AUDIO_ROOM_MODEL = "AudioRoom";
+const registerAudioRoom = async (muralId, widgetId) => {
+  try {
+    const newRoom = await createAudioRoomObject(muralId, widgetId);
+    await newRoom.save();
+    return { newRoom };
+  } catch (e) {
+    console.log("error in registerAudioRoom", e);
+  }
+};
+
+Parse.Cloud.define("registerAudioRoom", async request => {
+  const { widgetId, muralId } = request.params;
+  const payload = await registerAudioRoom(muralId, widgetId);
+  return { message: "check parse", payload };
+});
+
+Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
+  const { widgetIds } = params;
+  let rooms = [];
+  await new Parse.Query(AUDIO_ROOM_MODEL).each(
+    async el =>
+      widgetIds.includes(await el.get("widgetId")) &&
+      rooms.push(await el.toJSON())
+  );
+  return { rooms };
+});
