@@ -1,61 +1,59 @@
 {
-    "parseConfig":{
-       "appName":"Chisel",
-       "appId":"56208c10b1280dc9d5a995ca701fc844",
-       "masterKey":"183aa40722d5c271d98683172e8a28bf",
-       "port":1337,
-       "URLserver":"http://localhost:1337/parse",
-       "GraphQLURLserver":"http://localhost:1337/graphql",
-       "URLdb":"mongodb://localhost:27017/parse",
-       "URLsite":"http://localhost:9000/dashboard",
-       "maxUploadSize":"10mb",
-       "verifyUserEmails":true,
-       "preventLoginWithUnverifiedEmail":true,
-       "emailAdapter":{
-          "module":"parse-server-mailgun",
-          "options":{
-             "fromAddress":"sample@address.com",
-             "domain":"sampledomain.com",
-             "apiKey":"samplekey",
-             "templates":{
-                "passwordResetEmail":{
-                   "subject":"Reset your password",
-                   "pathPlainText":"mailTemplates/passwordReset.txt",
-                   "pathHtml":"mailTemplates/passwordReset.html"
-                },
-                "verificationEmail":{
-                   "subject":"Confirm your account",
-                   "pathPlainText":"mailTemplates/emailVerify.txt",
-                   "pathHtml":"mailTemplates/emailVerify.html"
-                },
-                "inviteEmail":{
-                   "subject":"Inviting you to Chisel",
-                   "pathPlainText":"mailTemplates/invite.txt",
-                   "pathHtml":"mailTemplates/invite.html"
-                }
-             }
+  "parseConfig": {
+    "appName": "Chisel",
+    "appId": "56208c10b1280dc9d5a995ca701fc844",
+    "masterKey": "183aa40722d5c271d98683172e8a28bf",
+    "port": 1337,
+    "URLserver": "http://localhost:1337/parse",
+    "GraphQLURLserver": "http://localhost:1337/graphql",
+    "URLdb": "mongodb://localhost:27017/parse",
+    "URLsite": "http://localhost:9000/dashboard",
+    "maxUploadSize": "10mb",
+    "verifyUserEmails": true,
+    "preventLoginWithUnverifiedEmail": true,
+    "emailAdapter": {
+      "module": "parse-server-mailgun",
+      "options": {
+        "fromAddress": "sample@address.com",
+        "domain": "sampledomain.com",
+        "apiKey": "samplekey",
+        "templates": {
+          "passwordResetEmail": {
+            "subject": "Reset your password",
+            "pathPlainText": "mailTemplates/passwordReset.txt",
+            "pathHtml": "mailTemplates/passwordReset.html"
+          },
+          "verificationEmail": {
+            "subject": "Confirm your account",
+            "pathPlainText": "mailTemplates/emailVerify.txt",
+            "pathHtml": "mailTemplates/emailVerify.html"
+          },
+          "inviteEmail": {
+            "subject": "Inviting you to Chisel",
+            "pathPlainText": "mailTemplates/invite.txt",
+            "pathHtml": "mailTemplates/invite.html"
           }
-       },
-       "customPages":{
-          "verifyEmailSuccess":"/email-verify",
-          "choosePassword":"/password-set",
-          "passwordResetSuccess":"/password-set-success",
-          "invalidLink":"/invalid-link",
-          "invalidVerificationLink":"/invalid-link"
-       }
+        }
+      }
     },
-    "hifiAudioConfig":{
-       "appId":"d90c2859-daf4-46a4-b6ed-a69fac140e96",
-       "appSecret":"64471fe6-e247-4b08-a0f6-29024988998c",
-       "adminToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfaWQiOiJkOTBjMjg1OS1kYWY0LTQ2YTQtYjZlZC1hNjlmYWMxNDBlOTYiLCJ1c2VyX2lkIjoibmZlcm5vcyIsImFkbWluIjp0cnVlLCJkZXZlbG9wZXJfaWQiOiJhMWQ1ODZmYS01M2VkLTQyOTctODFkZS1lMGRkODNjNTNhYWYiLCJzdGFjayI6ImF1ZGlvbmV0LW1peGVyLWFwaS1ob2JieS0xNyJ9.NaxS6LKzzHoUG45LN_YvAQNwk34PG712Uzn7qdfxQe0"
-    },
-    "unsplashConfig":{
-       "apiKey":""
-    },
-    "extraConfig":{
-       "dashboardActivated":true,
-       "userEmail":"test",
-       "userPassword":"123456",
-       "siteTemplates":true
+    "customPages": {
+      "verifyEmailSuccess": "/email-verify",
+      "choosePassword": "/password-set",
+      "passwordResetSuccess": "/password-set-success",
+      "invalidLink": "/invalid-link",
+      "invalidVerificationLink": "/invalid-link"
     }
- }
+  },
+  "hifiAudioConfig": {
+    "appId": "a41435b7-c5fd-42a3-915e-192caf56166d",
+    "appSecret": "d98f4972-4186-4cf4-afcd-a2c55ca4f700",
+    "adminToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfaWQiOiJhNDE0MzViNy1jNWZkLTQyYTMtOTE1ZS0xOTJjYWY1NjE2NmQiLCJhZG1pbiI6dHJ1ZSwiZGV2ZWxvcGVyX2lkIjoiZmJjYzZiZDctNzc2YS00ZWI0LTliZWEtYzQ4ZDU1MWM4ZDA5Iiwic3RhY2siOiJhdWRpb25ldC1taXhlci1hcGktaG9iYnktMjAifQ.O14pOuNQj0MqhNb4YoFL1uAC8BdMybl06IxQESGyH8U"
+  },
+  "unsplashConfig": { "apiKey": "" },
+  "extraConfig": {
+    "dashboardActivated": true,
+    "userEmail": "test",
+    "userPassword": "123456",
+    "siteTemplates": true
+  }
+}
