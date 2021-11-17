@@ -430,29 +430,38 @@ ${JSON.stringify(e)}`);
   }
 }
 
-const createAudioRoomObject = async (muralId, widgetId) => {
+const createAudioRoomObject = async (muralId, widgetId, muralName) => {
   const AudioRoom = await Parse.Object.extend(AUDIO_ROOM_MODEL);
+  const jwt = await generateAudioJWT(widgetId, widgetId, muralName);
+
   const newRoom = new AudioRoom();
   newRoom.set("widgetId", widgetId);
   newRoom.set("muralId", muralId);
+  newRoom.set("jwt", jwt);
   return newRoom;
 };
 
-const registerAudioRoom = async (muralId, widgetId) => {
+const registerAudioRoom = async (muralId, widgetId, muralName) => {
   try {
-    const newRoom = await createAudioRoomObject(muralId, widgetId);
+    const newRoom = await createAudioRoomObject(muralId, widgetId, muralName);
     await newRoom.save();
-    return { newRoom };
+    return newRoom;
   } catch (e) {
     console.log("error in registerAudioRoom", e);
   }
 };
 
-// TODO: should return a newly generated JWT token
-Parse.Cloud.define("registerAudioRoom", async request => {
-  const { widgetId, muralId } = request.params;
-  const payload = await registerAudioRoom(muralId, widgetId);
-  return { payload };
+Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
+  const { widgetId, muralId, muralName } = params;
+  const room = await registerAudioRoom(muralId, widgetId, muralName);
+
+  return {
+    payload: {
+      widgetId: room.get("widgetId"),
+      muralId: room.get("muralId"),
+      jwt: room.get("jwt")
+    }
+  };
 });
 
 Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
