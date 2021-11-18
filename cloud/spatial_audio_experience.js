@@ -179,8 +179,6 @@ Parse.Cloud.define("setupDefaultZones", async request => {
     }
   ]);
 
-  console.log(">> ZONES: ", zones);
-
   const atts = [
     {
       "source-zone-id": zones[1]["id"], // general channel
@@ -197,7 +195,6 @@ Parse.Cloud.define("setupDefaultZones", async request => {
   ];
 
   const attsResult = await setupDefaultAttenuations(vulcanSpaceId, atts);
-  console.log(">> ATTS: ", attsResult);
 
   return attsResult;
 });
@@ -474,6 +471,13 @@ const registerAudioPerson = async (userId, muralId) => {
   }
 };
 
+const filterAudioPersonasFields = person => ({
+  userId: person.get("userId"),
+  muralId: person.get("muralId")
+});
+
+// -----------CLOUD-----------------------------------------------------------------------------------------------------
+
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
   const { widgetId, muralId, muralName } = params;
   const room = await registerAudioRoom(muralId, widgetId, muralName);
@@ -513,12 +517,34 @@ Parse.Cloud.define("removeAudioRoom", async ({ params }) => {
 
 Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
   const { userId, muralId } = params;
-
   const roomExists = await new Parse.Query(AUDIO_PERSON)
     .equalTo("userId", userId)
     .first();
+
   if (!roomExists) {
     const audioPerson = await registerAudioPerson(userId, muralId);
     return { audioPerson: audioPerson.toJSON() };
+  }
+});
+
+Parse.Cloud.define("getAudioPersonas", async ({ params }) => {
+  const personas = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("muralId", params.muralId)
+    .find();
+
+  return personas.map(filterAudioPersonasFields);
+});
+
+Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
+  const { userIds, muralId } = params;
+
+  const personasQuery = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("muralId", muralId)
+    .find();
+
+  if (personasQuery.length) {
+    personasQuery.forEach(
+      el => userIds.includes(el.get("userId")) && el.destroy()
+    );
   }
 });
