@@ -13,9 +13,11 @@ const {
   HiFiCommunicator,
   preciseInterval
 } = require("hifi-spatial-audio");
-const { SignJWT } = require("jose/dist/node/cjs/jwt/sign"); // Used to create a JWT associated with your Space.
+const { SignJWT } = require("jose/dist/node/cjs/jwt/sign");
+const { log } = require("yarn/lib/cli"); // Used to create a JWT associated with your Space.
 
 const AUDIO_ROOM_MODEL = "AudioRoom";
+const AUDIO_PERSON = "AudioPerson";
 
 const generateSpace = async (vulcanSpaceId, name) => {
   try {
@@ -441,13 +443,34 @@ const createAudioRoomObject = async (muralId, widgetId, muralName) => {
   return newRoom;
 };
 
+const createAudioPersonObject = async (userId, muralId) => {
+  const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
+  const newPerson = new AudioPerson();
+
+  newPerson.set("userId", userId);
+  newPerson.set("muralId", muralId);
+
+  return newPerson;
+};
+
 const registerAudioRoom = async (muralId, widgetId, muralName) => {
   try {
     const newRoom = await createAudioRoomObject(muralId, widgetId, muralName);
     await newRoom.save();
     return newRoom;
   } catch (e) {
-    console.log("error in registerAudioRoom", e);
+    console.log("error in registerAudioRoom ", e);
+  }
+};
+
+const registerAudioPerson = async (userId, muralId) => {
+  try {
+    const newPerson = await createAudioPersonObject(userId, muralId);
+    await newPerson.save();
+
+    return await newPerson;
+  } catch (e) {
+    console.log("error in registerAudioPerson ", e);
   }
 };
 
@@ -485,5 +508,17 @@ Parse.Cloud.define("removeAudioRoom", async ({ params }) => {
 
   if (roomQuery) {
     roomQuery.destroy();
+  }
+});
+
+Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
+  const { userId, muralId } = params;
+
+  const roomExists = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("userId", userId)
+    .first();
+  if (!roomExists) {
+    const audioPerson = await registerAudioPerson(userId, muralId);
+    return { audioPerson: audioPerson.toJSON() };
   }
 });
