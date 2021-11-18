@@ -503,15 +503,17 @@ Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
   return { rooms };
 });
 
-Parse.Cloud.define("removeAudioRoom", async ({ params }) => {
-  const { widgetId } = params;
+Parse.Cloud.define("removeAudioRooms", async ({ params }) => {
+  const { widgetIds, muralId } = params;
 
   const roomQuery = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("widgetId", widgetId)
-    .first();
+    .equalTo("muralId", muralId)
+    .find();
 
-  if (roomQuery) {
-    roomQuery.destroy();
+  if (roomQuery.length) {
+    roomQuery.forEach(
+      person => widgetIds.includes(person.get("widgetId")) && person.destroy()
+    );
   }
 });
 
@@ -544,7 +546,7 @@ Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
 
   if (personasQuery.length) {
     personasQuery.forEach(
-      el => userIds.includes(el.get("userId")) && el.destroy()
+      person => userIds.includes(person.get("userId")) && person.destroy()
     );
   }
 });
