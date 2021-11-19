@@ -550,3 +550,15 @@ Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
     );
   }
 });
+
+Parse.Cloud.define("getAudioRoomToken", async ({ params }) => {
+  const { roomId } = params;
+
+  const roomQuery = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("widgetId", roomId)
+    .first();
+
+  if (roomQuery) {
+    return { jwt: roomQuery.get("jwt") };
+  }
+});
