@@ -558,7 +558,5 @@ Parse.Cloud.define("getAudioRoomToken", async ({ params }) => {
     .equalTo("widgetId", roomId)
     .first();
 
-  if (roomQuery) {
-    return { jwt: roomQuery.get("jwt") };
-  }
+  return { jwt: roomQuery ? roomQuery.get("jwt") : null };
 });
