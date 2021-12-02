@@ -557,6 +557,53 @@ Parse.Cloud.define("getAudioRoomToken", async ({ params }) => {
   const roomQuery = await new Parse.Query(AUDIO_ROOM_MODEL)
     .equalTo("widgetId", roomId)
     .first();
-
+  console.log('roomQuery.get("jwt")', roomQuery.get("jwt"))
   return { jwt: roomQuery ? roomQuery.get("jwt") : null };
+});
+
+Parse.Cloud.define("muteAudioPerson", async ({ params }) => {
+  const { space_id, user_id } = params;
+
+  const response = await axios.post(
+    `https://api.highfidelity.com/api/v1/spaces/${space_id}/users/${user_id}?token=${hifiAudioConfig.adminToken}`,
+      { mute: true }
+    );
+    return response.data;
+});
+
+Parse.Cloud.define("unmuteAudioPerson", async ({ params }) => {
+  const { space_id, user_id } = params;
+
+  const response = await axios.post(
+    `https://api.highfidelity.com/api/v1/spaces/${space_id}/users/${user_id}?token=${hifiAudioConfig.adminToken}`,
+      { mute: false }
+    );
+    return response.data;
+});
+
+Parse.Cloud.define("kickAudioPerson", async ({ params }) => {
+  const { space_id, user_id } = params;
+
+  const response = await axios.delete(
+    `https://api.highfidelity.com/api/v1/spaces/${space_id}/users/${user_id}?token=${hifiAudioConfig.adminToken}`
+  );
+    return response.data;
+});
+
+Parse.Cloud.define("getSpaceDetails", async ({ params }) => {
+  const { space_id } = params;
+
+  const response = await axios.get(
+    `https://api.highfidelity.com/api/v1/spaces/${space_id}?token=${hifiAudioConfig.adminToken}`
+  );
+    return response.data;
+});
+
+Parse.Cloud.define("getAllUsers", async ({ params }) => {
+  const { space_id } = params;
+
+  const response = await axios.get(
+    `https://api.highfidelity.com/api/v1/spaces/${space_id}/users?token=${hifiAudioConfig.adminToken}`
+  );
+    return response.data;
 });

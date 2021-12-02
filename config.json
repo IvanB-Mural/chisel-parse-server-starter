@@ -45,9 +45,9 @@
     }
   },
   "hifiAudioConfig": {
-    "appId": "a41435b7-c5fd-42a3-915e-192caf56166d",
-    "appSecret": "d98f4972-4186-4cf4-afcd-a2c55ca4f700",
-    "adminToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfaWQiOiJhNDE0MzViNy1jNWZkLTQyYTMtOTE1ZS0xOTJjYWY1NjE2NmQiLCJhZG1pbiI6dHJ1ZSwiZGV2ZWxvcGVyX2lkIjoiZmJjYzZiZDctNzc2YS00ZWI0LTliZWEtYzQ4ZDU1MWM4ZDA5Iiwic3RhY2siOiJhdWRpb25ldC1taXhlci1hcGktaG9iYnktMjAifQ.O14pOuNQj0MqhNb4YoFL1uAC8BdMybl06IxQESGyH8U"
+    "appId": "db7f51a4-87de-4987-9392-b6f9b1a302b4",
+    "appSecret": "fd388f22-f64f-4cd3-b49b-058f91cade07",
+    "adminToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfaWQiOiJkYjdmNTFhNC04N2RlLTQ5ODctOTM5Mi1iNmY5YjFhMzAyYjQiLCJhZG1pbiI6dHJ1ZSwiZGV2ZWxvcGVyX2lkIjoiYTFkNTg2ZmEtNTNlZC00Mjk3LTgxZGUtZTBkZDgzYzUzYWFmIiwic3RhY2siOiJhdWRpb25ldC1taXhlci1hcGktaG9iYnktMjAifQ.Tn2gmm9NyDETH4jx7pcc_7CbRVeKlyNKVm5Cok2KOgk"
   },
   "unsplashConfig": { "apiKey": "" },
   "extraConfig": {
