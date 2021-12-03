@@ -18,6 +18,7 @@ const { log } = require("yarn/lib/cli"); // Used to create a JWT associated with
 
 const AUDIO_ROOM_MODEL = "AudioRoom";
 const AUDIO_PERSON = "AudioPerson";
+const MUTED_USERS = "MutedUsers";
 
 const generateSpace = async (vulcanSpaceId, name) => {
   try {
@@ -450,6 +451,51 @@ const createAudioPersonObject = async (userId, muralId) => {
   return newPerson;
 };
 
+const createMutedAudioPersonObject = async (muralId, userId, muted) => {
+  const MutedAudioPerson = await Parse.Object.extend(MUTED_USERS);
+  const newMutedPerson = new MutedAudioPerson();
+
+  newMutedPerson.set("userId", userId);
+  newMutedPerson.set("muralId", muralId);
+  newMutedPerson.set("muted", muted);
+
+  return newMutedPerson;
+};
+
+const registerMutedAudioPerson = async (muralId, userId, muted) => {
+  try {
+    const newRoom = await createMutedAudioPersonObject(muralId, userId, muted);
+    await newRoom.save();
+    return newRoom;
+  } catch (e) {
+    console.log("error in registerMutedAudioPerson ", e);
+  }
+};
+
+Parse.Cloud.define("registerMutedAudioPerson", async ({ params }) => {
+  const { muralId, userId, muted } = params;
+
+  const mutedUserExists = await new Parse.Query(MUTED_USERS)
+    .equalTo("userId", userId)
+    .first();
+
+  if (!mutedUserExists) {
+    const mutedAudioPerson = await registerMutedAudioPerson(muralId, userId, muted);
+    // return { mutedAudioPerson: mutedAudioPerson.toJSON() };
+    return mutedAudioPerson;
+  }
+
+  // const room = await registerMutedAudioPerson(muralId, userId, muted);
+
+  // return {
+  //   payload: {
+  //     muralId: room.get("muralId"),
+  //     userId: room.get("userId"),
+  //     muted: room.get("muted"),
+  //   }
+  // };
+});
+
 const registerAudioRoom = async (muralId, widgetId, muralName) => {
   try {
     const newRoom = await createAudioRoomObject(muralId, widgetId, muralName);
@@ -551,6 +597,20 @@ Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
   }
 });
 
+Parse.Cloud.define("removeMutedAudioPersonas", async ({ params }) => {
+  const { muralId, userIds } = params;
+
+  const personasQuery = await new Parse.Query(MUTED_USERS)
+    .equalTo("muralId", muralId)
+    .find();
+
+  if (personasQuery.length) {
+    personasQuery.forEach(
+      person => userIds.includes(person.get("userId")) && person.destroy()
+    );
+  }
+});
+
 Parse.Cloud.define("getAudioRoomToken", async ({ params }) => {
   const { roomId } = params;
 
@@ -561,6 +621,7 @@ Parse.Cloud.define("getAudioRoomToken", async ({ params }) => {
   return { jwt: roomQuery ? roomQuery.get("jwt") : null };
 });
 
+// Unused functions
 Parse.Cloud.define("muteAudioPerson", async ({ params }) => {
   const { space_id, user_id } = params;
 
