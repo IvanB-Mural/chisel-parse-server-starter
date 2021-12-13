@@ -19,6 +19,7 @@ const { log } = require("yarn/lib/cli"); // Used to create a JWT associated with
 const AUDIO_ROOM_MODEL = "AudioRoom";
 const AUDIO_PERSON = "AudioPerson";
 const MUTED_USERS = "MutedUsers";
+const KICKED_USERS = "KickedUsers";
 
 const generateSpace = async (vulcanSpaceId, name) => {
   try {
@@ -484,18 +485,49 @@ Parse.Cloud.define("registerMutedAudioPerson", async ({ params }) => {
     // return { mutedAudioPerson: mutedAudioPerson.toJSON() };
     return mutedAudioPerson;
   }
-
-  // const room = await registerMutedAudioPerson(muralId, userId, muted);
-
-  // return {
-  //   payload: {
-  //     muralId: room.get("muralId"),
-  //     userId: room.get("userId"),
-  //     muted: room.get("muted"),
-  //   }
-  // };
 });
 
+Parse.Cloud.define("getMutedAudioPersonas", async ({ params }) => {
+  const personas = await new Parse.Query(MUTED_USERS)
+    .equalTo("muralId", params.muralId)
+    .find();
+
+  return personas.map(filterAudioPersonasFields);
+});
+
+const createKickedAudioPersonObject = async (muralId, userId, kicked) => {
+  const KickedAudioPerson = await Parse.Object.extend(KICKED_USERS);
+  const newKickedPerson = new KickedAudioPerson();
+
+  newKickedPerson.set("userId", userId);
+  newKickedPerson.set("muralId", muralId);
+  newKickedPerson.set("kicked", kicked);
+
+  return newKickedPerson;
+};
+
+const registerKickedAudioPerson = async (muralId, userId, kicked) => {
+  try {
+    const newKickedUser = await createKickedAudioPersonObject(muralId, userId, kicked);
+    await newKickedUser.save();
+    return newKickedUser;
+  } catch (e) {
+    console.log("error in registerKickedAudioPerson ", e);
+  }
+};
+
+Parse.Cloud.define("registerKickedAudioPerson", async ({ params }) => {
+  const { muralId, userId, kicked } = params;
+
+  const kickedUserExists = await new Parse.Query(KICKED_USERS)
+    .equalTo("userId", userId)
+    .first();
+
+  if (!kickedUserExists) {
+    const kickedAudioPerson = await registerKickedAudioPerson(muralId, userId, kicked);
+    return kickedAudioPerson;
+  }
+});
 const registerAudioRoom = async (muralId, widgetId, muralName) => {
   try {
     const newRoom = await createAudioRoomObject(muralId, widgetId, muralName);
