@@ -1,96 +1,15 @@
-const axios = require("axios");
 const { hifiAudioConfig } = require("./common");
 const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
-const decode = require("audio-decode");
-const format = require("audio-format");
-const convert = require("pcm-convert");
-const { MediaStream } = require("wrtc");
-const {
-  Point3D,
-  HiFiAudioAPIData,
-  HiFiCommunicator,
-  preciseInterval
-} = require("hifi-spatial-audio");
 const { SignJWT } = require("jose/dist/node/cjs/jwt/sign");
-const { log } = require("yarn/lib/cli"); // Used to create a JWT associated with your Space.
 
 const AUDIO_ROOM_MODEL = "AudioRoom";
 const AUDIO_PERSON = "AudioPerson";
 const MUTED_USERS = "MutedUsers";
 const KICKED_USERS = "KickedUsers";
+const SPACE_MAPPING_MODEL = "SpaceMapping";
+const ANALYTICS_MODEL = "Analytics";
 
-const generateSpace = async (vulcanSpaceId, name) => {
-  try {
-    const response = await axios.get(
-      `https://api.highfidelity.com/api/v1/spaces/create?token=${hifiAudioConfig.adminToken}&name=${vulcanSpaceId}_${name}`
-    );
-    if (!response.data || !response.data["space-id"]) return null;
-    return response.data["space-id"];
-  } catch (e) {
-    console.error(e);
-    throw e;
-  }
-};
 
-const getSpace = async vulcanSpaceId => {
-  const SPACE_MAPPING_MODEL = "SpaceMapping";
-  try {
-    // Find the existing one first.
-    const spaceQuery = new Parse.Query(SPACE_MAPPING_MODEL);
-    spaceQuery.equalTo("vulcan_space_id", vulcanSpaceId);
-    const spaceRecord = await spaceQuery.first({ useMasterKey: true });
-    if (!spaceRecord || !spaceRecord.get("space_token")) {
-      return "No space!";
-    }
-    return spaceRecord.get("space_token");
-  } catch (e) {
-    console.log("error in findOrGenerateSpace", e);
-  }
-};
-
-Parse.Cloud.define("getSpace", async request => {
-  const { vulcanSpaceId } = request.params;
-  const spaceToken = await getSpace(vulcanSpaceId);
-  return spaceToken;
-});
-
-// Hifi Spatial Audio Token
-// - Check Parse server for existing space token, return if found
-// - generate one if doesn't exist,
-// - store newly generated one into Parse
-const findOrGenerateSpace = async (vulcanSpaceId, name) => {
-  const SPACE_MAPPING_MODEL = "SpaceMapping";
-  try {
-    // Find the existing one first.
-    const spaceQuery = new Parse.Query(SPACE_MAPPING_MODEL);
-    spaceQuery.equalTo("vulcan_space_id", vulcanSpaceId);
-    const spaceRecord = await spaceQuery.first({ useMasterKey: true });
-
-    if (!spaceRecord || !spaceRecord.get("space_token")) {
-      // When no existing record, generate one.
-      const spaceToken = await generateSpace(vulcanSpaceId, name);
-      if (spaceToken === null) throw "No space token generated";
-
-      // Store newly generated one into Parse Server
-      const SpaceMapping = Parse.Object.extend(SPACE_MAPPING_MODEL);
-      const newSpaceMappingObject = new SpaceMapping();
-      newSpaceMappingObject.set("name", name);
-      newSpaceMappingObject.set("vulcan_space_id", vulcanSpaceId);
-      newSpaceMappingObject.set("space_token", spaceToken);
-      await newSpaceMappingObject.save();
-      return spaceToken;
-    }
-    return spaceRecord.get("space_token");
-  } catch (e) {
-    console.log("error in findOrGenerateSpace", e);
-  }
-};
-
-// Cloud function : End point for users for JWT token
-// - find or generate space id first
-// - generate JWT with above space Id and given user ID
 Parse.Cloud.define("generateAudioJWT", async request => {
   const { userID, vulcanSpaceId, spaceName } = request.params;
   const hifiJWT = await generateAudioJWT(userID, vulcanSpaceId, spaceName);
@@ -100,16 +19,16 @@ Parse.Cloud.define("generateAudioJWT", async request => {
 const generateAudioJWT = async (userID, vulcanSpaceId, spaceName) => {
   let hiFiJWT;
   try {
-    const spaceId = await findOrGenerateSpace(vulcanSpaceId, spaceName);
+   // const spaceId = await findOrGenerateSpace(vulcanSpaceId, spaceName);
 
     // - generate JWT with above space Id and given user ID
     const SECRET_KEY_FOR_SIGNING = crypto.createSecretKey(
-      Buffer.from(hifiAudioConfig.appSecret, "utf8")
+      Buffer.from("JC1eKQRYVxTDppaLG1oMaGfhHTx4DvJyI_mOXfwePZs=", "utf8")
     );
     hiFiJWT = await new SignJWT({
       user_id: userID,
-      app_id: hifiAudioConfig.appId,
-      space_id: spaceId
+      app_id: vulcanSpaceId,
+      space_id: spaceName
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .sign(SECRET_KEY_FOR_SIGNING);
@@ -121,154 +40,6 @@ const generateAudioJWT = async (userID, vulcanSpaceId, spaceName) => {
   }
 };
 
-const setupDefaultZones = async (space_id, zonesParams) => {
-  try {
-    const response = await axios.post(
-      `https://api.highfidelity.com/api/v1/spaces/${space_id}/settings/zones?token=${hifiAudioConfig.adminToken}`,
-      zonesParams
-    );
-    if (!response.data || !response.data.length) return null;
-    return response.data;
-  } catch (e) {
-    console.error(
-      `https://api.highfidelity.com/api/v1/spaces/${space_id}/settings/zones?token=${hifiAudioConfig.adminToken}`
-    );
-    throw e;
-  }
-};
-const setupDefaultAttenuations = async (space_id, attsParams) => {
-  try {
-    const response = await axios.post(
-      `https://api.highfidelity.com/api/v1/spaces/${space_id}/settings/zone_attenuations?token=${hifiAudioConfig.adminToken}`,
-      attsParams
-    );
-    if (!response.data || !response.data.length) return null;
-    return response.data;
-  } catch (e) {
-    console.error(e);
-    throw e;
-  }
-};
-
-const GENERAL_ZONE_DIMENSIONS = {
-  "x-min": 0,
-  "x-max": 1,
-  "y-min": 0,
-  "y-max": 1,
-  "z-min": 2,
-  "z-max": 2
-};
-const MURAL_ZONE_DIMENSIONS = {
-  "x-min": 0,
-  "x-max": 1000,
-  "y-min": 0,
-  "y-max": 1000,
-  "z-min": 0,
-  "z-max": 0
-};
-
-Parse.Cloud.define("setupDefaultZones", async request => {
-  const { vulcanSpaceId } = request.params;
-
-  const zones = await setupDefaultZones(vulcanSpaceId, [
-    {
-      name: `${vulcanSpaceId}_mural`,
-      ...MURAL_ZONE_DIMENSIONS
-    },
-    {
-      name: `${vulcanSpaceId}_general_channel`,
-      ...GENERAL_ZONE_DIMENSIONS
-    }
-  ]);
-
-  const atts = [
-    {
-      "source-zone-id": zones[1]["id"], // general channel
-      "listener-zone-id": zones[0]["id"], // mural
-      attenuation: 0.05, // low attenuation == sound is very audible
-      "za-offset": 1
-    },
-    {
-      "source-zone-id": zones[0]["id"], // mural
-      "listener-zone-id": zones[1]["id"], // general channel
-      attenuation: 0.95,
-      "za-offset": 2
-    }
-  ];
-
-  const attsResult = await setupDefaultAttenuations(vulcanSpaceId, atts);
-
-  return attsResult;
-});
-
-Parse.Cloud.define("playGeneralZone", async request => {
-  const {
-    vulcanSpaceId,
-    spaceName,
-    objectId,
-    audioFileName,
-    hiFiGain
-  } = request.params;
-  // Generate the JWT used to connect to our High Fidelity Space.
-  let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
-  if (!hiFiJWT) {
-    return;
-  }
-  const GZD = GENERAL_ZONE_DIMENSIONS;
-  await startAudioBox(
-    `./music/${audioFileName}.mp3`,
-    { x: GZD["x-min"], y: GZD["y-min"], z: GZD["z-min"] },
-    hiFiGain,
-    hiFiJWT
-  );
-});
-
-Parse.Cloud.define("stopGeneralZone", async request => {
-  const { vulcanSpaceId, spaceName, objectId } = request.params;
-  // Generate the JWT used to connect to our High Fidelity Space.
-  let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
-  if (!hiFiJWT) {
-    return;
-  }
-  await stopAudioBox(hiFiJWT);
-});
-
-Parse.Cloud.define("startAudioBox", async request => {
-  const {
-    vulcanSpaceId,
-    spaceName,
-    objectId,
-    audioFileName,
-    hiFiGain,
-    x,
-    y,
-    isBroadcast
-  } = request.params;
-  // Generate the JWT used to connect to our High Fidelity Space.
-  let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
-  if (!hiFiJWT) {
-    return;
-  }
-  await startAudioBox(
-    `./music/${audioFileName}.mp3`,
-    { x, y, z: 0 },
-    hiFiGain,
-    hiFiJWT,
-    isBroadcast
-  );
-  // return hifiCommunicator;
-});
-
-Parse.Cloud.define("stopAudioBox", async request => {
-  const { vulcanSpaceId, spaceName, objectId } = request.params;
-  // Generate the JWT used to connect to our High Fidelity Space.
-  let hiFiJWT = await generateAudioJWT(objectId, vulcanSpaceId, spaceName);
-  if (!hiFiJWT) {
-    return;
-  }
-  await stopAudioBox(hiFiJWT);
-});
-
 /**
  * Play the audio from a file into a High Fidelity Space. The audio will loop indefinitely.
  *
@@ -276,7 +47,7 @@ Parse.Cloud.define("stopAudioBox", async request => {
  * @param {object} position - The {x, y, z} point at which to spatialize the audio.
  * @param {number} hiFiGain - Set above 1 to boost the volume of the bot, or set below 1 to attenuate the volume of the bot.
  */
-async function startAudioBox(
+ async function startAudioBox(
   audioPath,
   position,
   hiFiGain,
@@ -413,41 +184,60 @@ ${JSON.stringify(e)}`);
   // return hifiCommunicator;
 }
 
-async function stopAudioBox(hiFiJWT) {
-  const // Set up the HiFiCommunicator used to communicate with the Spatial Audio API.
-    hifiCommunicator = new HiFiCommunicator();
-
-  // Connect to our High Fidelity Space.
-  let connectResponse;
+// Hifi Spatial Audio Token
+// - Check Parse server for existing space token, return if found
+// - generate one if doesn't exist,
+// - store newly generated one into Parse
+const findOrGenerateSpace = async (vulcanSpaceId, name) => {
   try {
-    connectResponse = await hifiCommunicator.connectToHiFiAudioAPIServer(
-      hiFiJWT
-    );
-    await hifiCommunicator.disconnectFromHiFiAudioAPIServer();
-  } catch (e) {
-    console.error(`Call to \`connectToHiFiAudioAPIServer()\` failed! Error:\
-${JSON.stringify(e)}`);
-    return;
-  }
-}
+    // Find the existing one first.
+    const spaceQuery = new Parse.Query(SPACE_MAPPING_MODEL);
+    spaceQuery.equalTo("vulcan_space_id", vulcanSpaceId);
+    const spaceRecord = await spaceQuery.first({ useMasterKey: true });
 
-const createAudioRoomObject = async (muralId, widgetId, muralName) => {
+    if (!spaceRecord || !spaceRecord.get("space_token")) {
+      // When no existing record, generate one.
+      const spaceToken = await generateAudioJWT(vulcanSpaceId, name, name);
+      if (spaceToken === null) throw "No space token generated";
+
+      // Store newly generated one into Parse Server
+      const SpaceMapping = Parse.Object.extend(SPACE_MAPPING_MODEL);
+      const newSpaceMappingObject = new SpaceMapping();
+      newSpaceMappingObject.set("name", name);
+      newSpaceMappingObject.set("vulcan_space_id", vulcanSpaceId);
+      newSpaceMappingObject.set("space_token", spaceToken);
+      await newSpaceMappingObject.save();
+      return spaceToken;
+    }
+    return spaceRecord.get("space_token");
+  } catch (e) {
+    console.log("error in findOrGenerateSpace", e);
+  }
+};
+
+Parse.Cloud.define("findOrGenerateSpace", async request => {
+  const { vulcanSpaceId, name } = request.params;
+  const spaceToken = await findOrGenerateSpace(vulcanSpaceId, name);
+  return spaceToken;
+});
+
+
+const createAudioRoomObject = async (muralId, widgetId) => {
   const AudioRoom = await Parse.Object.extend(AUDIO_ROOM_MODEL);
-  const jwt = await generateAudioJWT(widgetId, widgetId, muralName);
 
   const newRoom = new AudioRoom();
   newRoom.set("widgetId", widgetId);
   newRoom.set("muralId", muralId);
-  newRoom.set("jwt", jwt);
   return newRoom;
 };
 
-const createAudioPersonObject = async (userId, muralId) => {
+const createAudioPersonObject = async (userId, muralId, widgetId) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
 
   newPerson.set("userId", userId);
   newPerson.set("muralId", muralId);
+  newPerson.set("widgetId", widgetId);
 
   return newPerson;
 };
@@ -482,7 +272,6 @@ Parse.Cloud.define("registerMutedAudioPerson", async ({ params }) => {
 
   if (!mutedUserExists) {
     const mutedAudioPerson = await registerMutedAudioPerson(muralId, userId, muted);
-    // return { mutedAudioPerson: mutedAudioPerson.toJSON() };
     return mutedAudioPerson;
   }
 });
@@ -528,33 +317,15 @@ Parse.Cloud.define("registerKickedAudioPerson", async ({ params }) => {
     return kickedAudioPerson;
   }
 });
-const registerAudioRoom = async (muralId, widgetId, muralName) => {
+const registerAudioRoom = async (muralId, widgetId) => {
   try {
-    const newRoom = await createAudioRoomObject(muralId, widgetId, muralName);
+    const newRoom = await createAudioRoomObject(muralId, widgetId);
     await newRoom.save();
     return newRoom;
   } catch (e) {
     console.log("error in registerAudioRoom ", e);
   }
 };
-
-const registerAudioPerson = async (userId, muralId) => {
-  try {
-    const newPerson = await createAudioPersonObject(userId, muralId);
-    await newPerson.save();
-
-    return await newPerson;
-  } catch (e) {
-    console.log("error in registerAudioPerson ", e);
-  }
-};
-
-const filterAudioPersonasFields = person => ({
-  userId: person.get("userId"),
-  muralId: person.get("muralId")
-});
-
-// -----------CLOUD-----------------------------------------------------------------------------------------------------
 
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
   const { widgetId, muralId, muralName } = params;
@@ -564,10 +335,68 @@ Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
     payload: {
       widgetId: room.get("widgetId"),
       muralId: room.get("muralId"),
-      jwt: room.get("jwt")
     }
   };
 });
+
+Parse.Cloud.define("defineActiveAudioRoom", async ({ params }) => {
+  const { widgetId } = params;
+
+  const roomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("widgetId", widgetId).find();
+
+    if (roomExists.length) {
+      roomExists.forEach(
+        room => widgetId.includes(room.get("widgetId")) && room.set("active", true) && room.save()
+      );
+    }
+    return roomExists;
+});
+
+Parse.Cloud.define("defineEmptyAudioRoom", async ({ params }) => {
+  const { widgetId } = params;
+
+  const roomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("widgetId", widgetId).find();
+
+    if (roomExists.length) {
+      roomExists.forEach(
+        room => widgetId.includes(room.get("widgetId")) && room.set("active", false) && room.save()
+      );
+    }
+    return roomExists;
+});
+
+const registerAudioPerson = async (userId, muralId, widgetId) => {
+  try {
+    const newPerson = await createAudioPersonObject(userId, muralId, widgetId);
+    await newPerson.save();
+
+    return await newPerson;
+  } catch (e) {
+    console.log("error in registerAudioPerson ", e);
+  }
+};
+
+Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
+  const { userId, muralId, widgetId } = params;
+  const personExists = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("userId", userId)
+    .first();
+
+  if (!personExists) {
+    const audioPerson = await registerAudioPerson(userId, muralId, widgetId);
+    return { audioPerson: audioPerson.toJSON() };
+  }
+});
+
+const filterAudioPersonasFields = person => ({
+  userId: person.get("userId"),
+  muralId: person.get("muralId"),
+  widgetId: person.get("widgetId"),
+});
+
+// -----------CLOUD-----------------------------------------------------------------------------------------------------
 
 Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
   const { widgetIds } = params;
@@ -590,20 +419,8 @@ Parse.Cloud.define("removeAudioRooms", async ({ params }) => {
 
   if (roomQuery.length) {
     roomQuery.forEach(
-      person => widgetIds.includes(person.get("widgetId")) && person.destroy()
+      room => widgetIds.includes(room.get("widgetId")) && room.destroy()
     );
-  }
-});
-
-Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
-  const { userId, muralId } = params;
-  const roomExists = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("userId", userId)
-    .first();
-
-  if (!roomExists) {
-    const audioPerson = await registerAudioPerson(userId, muralId);
-    return { audioPerson: audioPerson.toJSON() };
   }
 });
 
@@ -613,6 +430,20 @@ Parse.Cloud.define("getAudioPersonas", async ({ params }) => {
     .find();
 
   return personas.map(filterAudioPersonasFields);
+});
+
+const filterAudioRoomsFields = person => ({
+  widgetId: person.get("widgetId"),
+  muralId: person.get("muralId"),
+  active: person.get("active"),
+});
+
+Parse.Cloud.define("getAudioRooms", async ({ params }) => {
+  const rooms = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("muralId", params.muralId)
+    .find();
+
+  return rooms.map(filterAudioRoomsFields);
 });
 
 Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
@@ -641,62 +472,4 @@ Parse.Cloud.define("removeMutedAudioPersonas", async ({ params }) => {
       person => userIds.includes(person.get("userId")) && person.destroy()
     );
   }
-});
-
-Parse.Cloud.define("getAudioRoomToken", async ({ params }) => {
-  const { roomId } = params;
-
-  const roomQuery = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("widgetId", roomId)
-    .first();
-  console.log('roomQuery.get("jwt")', roomQuery.get("jwt"))
-  return { jwt: roomQuery ? roomQuery.get("jwt") : null };
-});
-
-// Unused functions
-Parse.Cloud.define("muteAudioPerson", async ({ params }) => {
-  const { space_id, user_id } = params;
-
-  const response = await axios.post(
-    `https://api.highfidelity.com/api/v1/spaces/${space_id}/users/${user_id}?token=${hifiAudioConfig.adminToken}`,
-      { mute: true }
-    );
-    return response.data;
-});
-
-Parse.Cloud.define("unmuteAudioPerson", async ({ params }) => {
-  const { space_id, user_id } = params;
-
-  const response = await axios.post(
-    `https://api.highfidelity.com/api/v1/spaces/${space_id}/users/${user_id}?token=${hifiAudioConfig.adminToken}`,
-      { mute: false }
-    );
-    return response.data;
-});
-
-Parse.Cloud.define("kickAudioPerson", async ({ params }) => {
-  const { space_id, user_id } = params;
-
-  const response = await axios.delete(
-    `https://api.highfidelity.com/api/v1/spaces/${space_id}/users/${user_id}?token=${hifiAudioConfig.adminToken}`
-  );
-    return response.data;
-});
-
-Parse.Cloud.define("getSpaceDetails", async ({ params }) => {
-  const { space_id } = params;
-
-  const response = await axios.get(
-    `https://api.highfidelity.com/api/v1/spaces/${space_id}?token=${hifiAudioConfig.adminToken}`
-  );
-    return response.data;
-});
-
-Parse.Cloud.define("getAllUsers", async ({ params }) => {
-  const { space_id } = params;
-
-  const response = await axios.get(
-    `https://api.highfidelity.com/api/v1/spaces/${space_id}/users?token=${hifiAudioConfig.adminToken}`
-  );
-    return response.data;
 });
