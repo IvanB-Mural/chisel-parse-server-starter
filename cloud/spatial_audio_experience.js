@@ -8,7 +8,7 @@ const MUTED_USERS = "MutedUsers";
 const KICKED_USERS = "KickedUsers";
 const SPACE_MAPPING_MODEL = "SpaceMapping";
 const ANALYTICS_MODEL = "Analytics";
-
+const USERS_AUDIO = "UsersAudio";
 
 Parse.Cloud.define("generateAudioJWT", async request => {
   const { userID, vulcanSpaceId, spaceName } = request.params;
@@ -472,4 +472,52 @@ Parse.Cloud.define("removeMutedAudioPersonas", async ({ params }) => {
       person => userIds.includes(person.get("userId")) && person.destroy()
     );
   }
+});
+
+const createUsersAudioObject = async (roomId, linkToAudio, autoplay) => {
+  const UsersAudio = await Parse.Object.extend(USERS_AUDIO);
+  const newUsersAudio = new UsersAudio();
+
+  newUsersAudio.set("roomId", roomId);
+  newUsersAudio.set("linkToAudio", linkToAudio);
+  newUsersAudio.set("autoplay", autoplay);
+
+  return newUsersAudio;
+};
+
+const registerUsersAudio = async (roomId, linkToAudio, autoplay) => {
+  try {
+    const newAudio = await createUsersAudioObject(roomId, linkToAudio, autoplay);
+    await newAudio.save();
+    return newAudio;
+  } catch (e) {
+    console.log("error in registerUsersAudio ", e);
+  }
+};
+
+Parse.Cloud.define("registerUsersAudio", async ({ params }) => {
+  const { roomId, linkToAudio, autoplay } = params;
+
+  const UsersAudioExists = await new Parse.Query(USERS_AUDIO)
+    .equalTo("roomId", roomId)
+    .first();
+
+  if (!UsersAudioExists) {
+    const UsersAudio = await registerUsersAudio(roomId, linkToAudio, autoplay);
+    return UsersAudio;
+  }
+});
+
+const filterUsersAudioFields = person => ({
+  roomId: person.get("roomId"),
+  linkToAudio: person.get("linkToAudio"),
+  autoplay: person.get("autoplay"),
+});
+
+Parse.Cloud.define("getUsersAudio", async ({ params }) => {
+  const personas = await new Parse.Query(USERS_AUDIO)
+    .equalTo("roomId", params.roomId)
+    .find();
+
+  return personas.map(filterUsersAudioFields);
 });
