@@ -231,10 +231,11 @@ const createAudioRoomObject = async (muralId, widgetId) => {
   return newRoom;
 };
 
-const createAudioPersonObject = async (userId, muralId, widgetId) => {
+const createAudioPersonObject = async (dolbyUserId, userId, muralId, widgetId) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
-
+ 
+  newPerson.set("dolbyUserId", dolbyUserId);
   newPerson.set("userId", userId);
   newPerson.set("muralId", muralId);
   newPerson.set("widgetId", widgetId);
@@ -367,9 +368,9 @@ Parse.Cloud.define("defineEmptyAudioRoom", async ({ params }) => {
     return roomExists;
 });
 
-const registerAudioPerson = async (userId, muralId, widgetId) => {
+const registerAudioPerson = async (dolbyUserId, userId, muralId, widgetId) => {
   try {
-    const newPerson = await createAudioPersonObject(userId, muralId, widgetId);
+    const newPerson = await createAudioPersonObject(dolbyUserId, userId, muralId, widgetId);
     await newPerson.save();
 
     return await newPerson;
@@ -379,18 +380,19 @@ const registerAudioPerson = async (userId, muralId, widgetId) => {
 };
 
 Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
-  const { userId, muralId, widgetId } = params;
-  const personExists = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("userId", userId)
-    .first();
+  const { dolbyUserId, userId, muralId, widgetId } = params;
+  // const personExists = await new Parse.Query(AUDIO_PERSON)
+  //   .equalTo("userId", userId)
+  //   .first();
 
-  if (!personExists) {
-    const audioPerson = await registerAudioPerson(userId, muralId, widgetId);
+  //if (!personExists) {
+    const audioPerson = await registerAudioPerson(dolbyUserId, userId, muralId, widgetId);
     return { audioPerson: audioPerson.toJSON() };
-  }
+  //}
 });
 
 const filterAudioPersonasFields = person => ({
+  dolbyUserId: person.get("dolbyUserId"),
   userId: person.get("userId"),
   muralId: person.get("muralId"),
   widgetId: person.get("widgetId"),
@@ -430,6 +432,14 @@ Parse.Cloud.define("getAudioPersonas", async ({ params }) => {
     .find();
 
   return personas.map(filterAudioPersonasFields);
+});
+
+Parse.Cloud.define("getAudioPerson", async ({ params }) => {
+  const person = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("userId", params.userId)
+    .find();
+
+  return person;
 });
 
 const filterAudioRoomsFields = person => ({
