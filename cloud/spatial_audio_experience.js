@@ -485,20 +485,22 @@ Parse.Cloud.define("removeMutedAudioPersonas", async ({ params }) => {
 });
 
 //Users audio
-const createUsersAudioObject = async (userId, linkToAudio) => {
+const createUsersAudioObject = async (userId, linkToAudio, name) => {
   const UsersAudio = await Parse.Object.extend(USERS_AUDIO);
   const newUsersAudio = new UsersAudio();
 
   newUsersAudio.set("userId", userId);
   newUsersAudio.set("linkToAudio", linkToAudio);
+  newUsersAudio.set("name", name);
 
   return newUsersAudio;
 };
 
-const registerUsersAudio = async (userId, linkToAudio) => {
+const registerUsersAudio = async (userId, linkToAudio, name) => {
   try {
-    const newAudio = await createUsersAudioObject(userId, linkToAudio);
+    const newAudio = await createUsersAudioObject(userId, linkToAudio, name);
     await newAudio.save();
+    console.log(newAudio);
     return newAudio;
   } catch (e) {
     console.log("error in registerUsersAudio ", e);
@@ -506,21 +508,10 @@ const registerUsersAudio = async (userId, linkToAudio) => {
 };
 
 Parse.Cloud.define("registerUsersAudio", async ({ params }) => {
-  const { userId, linkToAudio } = params;
+  const { userId, linkToAudio, name } = params;
 
-  const UsersAudioExists = await new Parse.Query(USERS_AUDIO)
-    .equalTo("userId", userId)
-    .first();
-
-  if (!UsersAudioExists) {
-    const UsersAudio = await registerUsersAudio(userId, linkToAudio);
-    return UsersAudio;
-  }
-});
-
-const filterUsersAudioFields = person => ({
-  userId: person.get("userId"),
-  linkToAudio: person.get("linkToAudio"),
+  const UsersAudio = await registerUsersAudio(userId, linkToAudio, name);
+  return UsersAudio;
 });
 
 Parse.Cloud.define("getUsersAudio", async ({ params }) => {
@@ -528,7 +519,7 @@ Parse.Cloud.define("getUsersAudio", async ({ params }) => {
     .equalTo("userId", params.userId)
     .find();
 
-  return personas.map(filterUsersAudioFields);
+  return personas;
 });
 
 //Rooms audio 
