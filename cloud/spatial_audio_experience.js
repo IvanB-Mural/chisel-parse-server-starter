@@ -7,8 +7,8 @@ const AUDIO_PERSON = "AudioPerson";
 const MUTED_USERS = "MutedUsers";
 const KICKED_USERS = "KickedUsers";
 const SPACE_MAPPING_MODEL = "SpaceMapping";
-const ANALYTICS_MODEL = "Analytics";
 const USERS_AUDIO = "UsersAudio";
+const ROOMS_AUDIO = "RoomsAudio";
 
 Parse.Cloud.define("generateAudioJWT", async request => {
   const { userID, vulcanSpaceId, spaceName } = request.params;
@@ -474,20 +474,20 @@ Parse.Cloud.define("removeMutedAudioPersonas", async ({ params }) => {
   }
 });
 
-const createUsersAudioObject = async (roomId, linkToAudio, autoplay) => {
+//Users audio
+const createUsersAudioObject = async (userId, linkToAudio) => {
   const UsersAudio = await Parse.Object.extend(USERS_AUDIO);
   const newUsersAudio = new UsersAudio();
 
-  newUsersAudio.set("roomId", roomId);
+  newUsersAudio.set("userId", userId);
   newUsersAudio.set("linkToAudio", linkToAudio);
-  newUsersAudio.set("autoplay", autoplay);
 
   return newUsersAudio;
 };
 
-const registerUsersAudio = async (roomId, linkToAudio, autoplay) => {
+const registerUsersAudio = async (userId, linkToAudio) => {
   try {
-    const newAudio = await createUsersAudioObject(roomId, linkToAudio, autoplay);
+    const newAudio = await createUsersAudioObject(userId, linkToAudio);
     await newAudio.save();
     return newAudio;
   } catch (e) {
@@ -496,28 +496,97 @@ const registerUsersAudio = async (roomId, linkToAudio, autoplay) => {
 };
 
 Parse.Cloud.define("registerUsersAudio", async ({ params }) => {
-  const { roomId, linkToAudio, autoplay } = params;
+  const { userId, linkToAudio } = params;
 
   const UsersAudioExists = await new Parse.Query(USERS_AUDIO)
-    .equalTo("roomId", roomId)
+    .equalTo("userId", userId)
     .first();
 
   if (!UsersAudioExists) {
-    const UsersAudio = await registerUsersAudio(roomId, linkToAudio, autoplay);
+    const UsersAudio = await registerUsersAudio(userId, linkToAudio);
     return UsersAudio;
   }
 });
 
 const filterUsersAudioFields = person => ({
-  roomId: person.get("roomId"),
+  userId: person.get("userId"),
   linkToAudio: person.get("linkToAudio"),
-  autoplay: person.get("autoplay"),
 });
 
 Parse.Cloud.define("getUsersAudio", async ({ params }) => {
   const personas = await new Parse.Query(USERS_AUDIO)
-    .equalTo("roomId", params.roomId)
+    .equalTo("userId", params.userId)
     .find();
 
   return personas.map(filterUsersAudioFields);
+});
+
+//Rooms audio 
+const createRoomsAudioObject = async (audioId, userId, muralId, linkToAudio, roomId, autoplay) => {
+  const RoomsAudio = await Parse.Object.extend(ROOMS_AUDIO);
+  const newRoomsAudio = new RoomsAudio();
+
+  newRoomsAudio.set("audioId", audioId);
+  newRoomsAudio.set("userId", userId);
+  newRoomsAudio.set("muralId", muralId);
+  newRoomsAudio.set("linkToAudio", linkToAudio);
+  newRoomsAudio.set("roomId", roomId);
+  newRoomsAudio.set("autoplay", autoplay);
+
+  return newRoomsAudio;
+};
+
+const registerRoomsAudio = async (audioId, userId, muralId, linkToAudio, roomId, autoplay) => {
+  try {
+    const newAudio = await createRoomsAudioObject(audioId, userId, muralId, linkToAudio, roomId, autoplay);
+    await newAudio.save();
+
+    return newAudio;
+  } catch (e) {
+    console.log("error in registerRoomsAudio ", e);
+  }
+};
+
+Parse.Cloud.define("registerRoomsAudio", async ({ params }) => {
+  const { audioId, userId, muralId, linkToAudio, roomId, autoplay } = params;
+
+  const RoomsAudioExists = await new Parse.Query(ROOMS_AUDIO)
+    .equalTo("roomId", roomId)
+    .first();
+
+  if (!RoomsAudioExists) {
+    const RoomsAudio = await registerRoomsAudio(audioId, userId, muralId, linkToAudio, roomId, autoplay);
+    return RoomsAudio;
+  }
+});
+
+const filterRoomsAudioFields = person => ({
+  audioId: person.get("audioId"),
+  userId: person.get("userId"),
+  muralId: person.get("muralId"),
+  linkToAudio: person.get("linkToAudio"),
+  roomId: person.get("roomId"),
+  autoplay: person.get("autoplay"),
+});
+
+Parse.Cloud.define("getRoomsAudio", async ({ params }) => {
+  const personas = await new Parse.Query(ROOMS_AUDIO)
+    .equalTo("roomId", params.roomId)
+    .find();
+
+  return personas.map(filterRoomsAudioFields);
+});
+
+Parse.Cloud.define("updateRoomsAudio", async ({ params }) => {
+  const { audioId, linkToAudio } = params;
+
+  const audioExists = await new Parse.Query(ROOMS_AUDIO)
+    .equalTo("audioId", audioId).find();
+
+    if (audioExists.length) {
+      audioExists.forEach(
+        audio => audioId.includes(audio.get("audioId")) && audio.set("linkToAudio", linkToAudio) && audio.save()
+      );
+    }
+    return audioExists;
 });
