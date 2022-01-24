@@ -569,3 +569,23 @@ Parse.Cloud.define("getRoomsAudio", async ({ params }) => {
 
   return personas;
 });
+
+Parse.Cloud.define("removeUserAudio", async ({ params }) => {
+  
+  const rooms = await new Parse.Query(ROOMS_AUDIO)
+    .equalTo("audioId", params.objectId)
+    .find();
+  if (rooms.length) {
+    rooms.forEach(
+      room => room.destroy()
+    );
+  }
+  const audio = await new Parse.Query(USERS_AUDIO)
+    .equalTo("objectId", params.objectId)
+    .first();
+  audio.destroy();
+  
+  const fileName = params.linkToAudio.split('/').pop();
+  await new Parse.File(fileName).destroy();
+  return params;
+});
