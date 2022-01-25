@@ -231,10 +231,11 @@ const createAudioRoomObject = async (muralId, widgetId) => {
   return newRoom;
 };
 
-const createAudioPersonObject = async (dolbyUserId, userId, muralId, widgetId) => {
+const createAudioPersonObject = async (roomId, dolbyUserId, userId, muralId, widgetId) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
- 
+
+  newPerson.set("roomId", roomId);
   newPerson.set("dolbyUserId", dolbyUserId);
   newPerson.set("userId", userId);
   newPerson.set("muralId", muralId);
@@ -368,9 +369,9 @@ Parse.Cloud.define("defineEmptyAudioRoom", async ({ params }) => {
     return roomExists;
 });
 
-const registerAudioPerson = async (dolbyUserId, userId, muralId, widgetId) => {
+const registerAudioPerson = async (roomId, dolbyUserId, userId, muralId, widgetId) => {
   try {
-    const newPerson = await createAudioPersonObject(dolbyUserId, userId, muralId, widgetId);
+    const newPerson = await createAudioPersonObject(roomId, dolbyUserId, userId, muralId, widgetId);
     await newPerson.save();
 
     return await newPerson;
@@ -380,18 +381,47 @@ const registerAudioPerson = async (dolbyUserId, userId, muralId, widgetId) => {
 };
 
 Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
-  const { dolbyUserId, userId, muralId, widgetId } = params;
+  const { roomId, dolbyUserId, userId, muralId, widgetId } = params;
   // const personExists = await new Parse.Query(AUDIO_PERSON)
   //   .equalTo("userId", userId)
   //   .first();
 
   //if (!personExists) {
-    const audioPerson = await registerAudioPerson(dolbyUserId, userId, muralId, widgetId);
+    const audioPerson = await registerAudioPerson(roomId, dolbyUserId, userId, muralId, widgetId);
     return { audioPerson: audioPerson.toJSON() };
   //}
 });
 
+Parse.Cloud.define("updateAudioPersonRoomId", async ({ params }) => {
+  const { widgetId, roomId } = params;
+
+  const userExists = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("widgetId", widgetId).find();
+
+    if (userExists.length) {
+      userExists.forEach(
+        user => widgetId.includes(user.get("widgetId")) && user.set("roomId", roomId) && user.save()
+      );
+    }
+    return userExists;
+});
+
+Parse.Cloud.define("updateAudioPersonDolbyId", async ({ params }) => {
+  const { widgetId, dolbyUserId } = params;
+
+  const userExists = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("widgetId", widgetId).find();
+
+    if (userExists.length) {
+      userExists.forEach(
+        user => widgetId.includes(user.get("widgetId")) && user.set("dolbyUserId", dolbyUserId) && user.save()
+      );
+    }
+    return userExists;
+});
+
 const filterAudioPersonasFields = person => ({
+  roomId: person.get("roomId"),
   dolbyUserId: person.get("dolbyUserId"),
   userId: person.get("userId"),
   muralId: person.get("muralId"),
@@ -434,9 +464,17 @@ Parse.Cloud.define("getAudioPersonas", async ({ params }) => {
   return personas.map(filterAudioPersonasFields);
 });
 
+Parse.Cloud.define("getAudioPersonasByRoom", async ({ params }) => {
+  const personas = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("roomId", params.roomId)
+    .find();
+
+  return personas.map(filterAudioPersonasFields);
+});
+
 Parse.Cloud.define("getAudioPerson", async ({ params }) => {
   const person = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("userId", params.userId)
+    .equalTo("widgetId", params.widgetId)
     .find();
 
   return person;
@@ -500,7 +538,6 @@ const registerUsersAudio = async (userId, linkToAudio, name) => {
   try {
     const newAudio = await createUsersAudioObject(userId, linkToAudio, name);
     await newAudio.save();
-    console.log(newAudio);
     return newAudio;
   } catch (e) {
     console.log("error in registerUsersAudio ", e);
