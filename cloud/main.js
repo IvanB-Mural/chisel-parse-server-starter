@@ -29,7 +29,7 @@ import {
 } from "hifi-spatial-audio"; // Used to interface with the Spatial Audio API.
 require("./users_code");
 require("./spatial_audio_experience");
-
+require("./file_storage");
 // Get Site nameId to generate Model names
 const getSiteNameId = async siteId => {
   const siteQuery = new Parse.Query("Site");
