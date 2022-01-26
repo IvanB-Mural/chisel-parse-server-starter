@@ -413,14 +413,29 @@ Parse.Cloud.define("updateAudioPersonRoomId", async ({ params }) => {
 });
 
 Parse.Cloud.define("updateAudioPersonDolbyId", async ({ params }) => {
-  const { widgetId, dolbyUserId } = params;
+  const { widgetId, dolbyId } = params;
 
   const userExists = await new Parse.Query(AUDIO_PERSON)
     .equalTo("widgetId", widgetId).find();
 
     if (userExists.length) {
       userExists.forEach(
-        user => widgetId.includes(user.get("widgetId")) && user.set("dolbyUserId", dolbyUserId) && user.save()
+        user => widgetId.includes(user.get("widgetId")) && user.set("dolbyId", dolbyId) && user.save()
+      );
+    }
+    return userExists;
+});
+
+
+Parse.Cloud.define("updateAudioPersonCoordinates", async ({ params }) => {
+  const { widgetId, coordinates } = params;
+
+  const userExists = await new Parse.Query(AUDIO_PERSON)
+    .equalTo("widgetId", widgetId).find();
+
+    if (userExists.length) {
+      userExists.forEach(
+        user => widgetId.includes(user.get("widgetId")) && user.set("coordinates", coordinates) && user.save()
       );
     }
     return userExists;
@@ -428,10 +443,11 @@ Parse.Cloud.define("updateAudioPersonDolbyId", async ({ params }) => {
 
 const filterAudioPersonasFields = person => ({
   roomId: person.get("roomId"),
-  dolbyUserId: person.get("dolbyUserId"),
+  dolbyId: person.get("dolbyId"),
   userId: person.get("userId"),
   muralId: person.get("muralId"),
   widgetId: person.get("widgetId"),
+  coordinates: person.get("coordinates")
 });
 
 // -----------CLOUD-----------------------------------------------------------------------------------------------------
