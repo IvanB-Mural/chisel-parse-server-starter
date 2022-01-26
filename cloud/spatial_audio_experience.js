@@ -483,7 +483,7 @@ Parse.Cloud.define("getAudioPersonas", async ({ params }) => {
     .equalTo("muralId", params.muralId)
     .find();
 
-  return personas.map(filterAudioPersonasFields);
+  return personas;
 });
 
 Parse.Cloud.define("getAudioPersonasByRoom", async ({ params }) => {
