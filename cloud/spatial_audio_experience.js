@@ -639,7 +639,7 @@ Parse.Cloud.define("getRoomsAudio", async ({ params }) => {
 Parse.Cloud.define("removeUserAudio", async ({ params }) => {
   
   const rooms = await new Parse.Query(ROOMS_AUDIO)
-    .equalTo("audioId", params.audioId)
+    .equalTo("audioId", params.objectId)
     .find();
   if (rooms.length) {
     rooms.forEach(
@@ -647,7 +647,7 @@ Parse.Cloud.define("removeUserAudio", async ({ params }) => {
     );
   }
   const audio = await new Parse.Query(USERS_AUDIO)
-    .equalTo("objectId", params.audioId)
+    .equalTo("objectId", params.objectId)
     .first();
   audio.destroy();
 
