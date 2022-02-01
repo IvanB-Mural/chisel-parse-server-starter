@@ -222,14 +222,7 @@ Parse.Cloud.define("findOrGenerateSpace", async request => {
 });
 
 
-const createAudioRoomObject = async (muralId, widgetId) => {
-  const AudioRoom = await Parse.Object.extend(AUDIO_ROOM_MODEL);
 
-  const newRoom = new AudioRoom();
-  newRoom.set("widgetId", widgetId);
-  newRoom.set("muralId", muralId);
-  return newRoom;
-};
 
 
 const createAudioPersonObject = async (dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId) => {
@@ -323,26 +316,29 @@ Parse.Cloud.define("registerKickedAudioPerson", async ({ params }) => {
     return kickedAudioPerson;
   }
 });
-const registerAudioRoom = async (muralId, widgetId) => {
-  try {
-    const newRoom = await createAudioRoomObject(muralId, widgetId);
-    await newRoom.save();
-    return newRoom;
-  } catch (e) {
-    console.log("error in registerAudioRoom ", e);
-  }
-};
 
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
-  const { widgetId, muralId, muralName } = params;
-  const room = await registerAudioRoom(muralId, widgetId, muralName);
+  const { widgetId, muralId, width, height, x, y } = params;
 
-  return {
-    payload: {
-      widgetId: room.get("widgetId"),
-      muralId: room.get("muralId"),
-    }
-  };
+  const AudioRoomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("widgetId", widgetId)
+    .first();
+
+  if (AudioRoomExists) {
+    await AudioRoomExists.destroy();
+  }
+
+  const AudioRoom = await Parse.Object.extend(AUDIO_ROOM_MODEL);
+
+  const newRoom = new AudioRoom();
+  newRoom.set("widgetId", widgetId);
+  newRoom.set("muralId", muralId);
+  newRoom.set("width", width);
+  newRoom.set("height", height);
+  newRoom.set("x", x);
+  newRoom.set("y", y);
+
+  return await newRoom.save();
 });
 
 Parse.Cloud.define("defineActiveAudioRoom", async ({ params }) => {
@@ -461,7 +457,7 @@ Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
       widgetIds.includes(await el.get("widgetId")) &&
       rooms.push(await el.toJSON())
   );
-  return { rooms };
+  return rooms;
 });
 
 Parse.Cloud.define("removeAudioRooms", async ({ params }) => {
