@@ -385,10 +385,14 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
   const { dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId } = params;
   const personExists = await new Parse.Query(AUDIO_PERSON)
     .equalTo("userId", userId)
-    .first();
+    .find();
 
-  if (personExists) {
-    personExists.destroy();
+  const sameUser = personExists.length ? personExists.find(
+    user => user.get("muralId") === muralId
+  ) : null;
+
+  if (sameUser) {
+    sameUser.destroy();
   }
   const audioPerson = await registerAudioPerson(dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId);
   return { audioPerson: audioPerson.toJSON() };
@@ -525,7 +529,9 @@ Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
   if (personasQuery.length) {
     for (userArray of personasQuery) {
       for (user of userArray) {
-        user.destroy()
+        if (muralId === user.get("muralId")) {
+          user.destroy()
+        }
       }
     }
     
