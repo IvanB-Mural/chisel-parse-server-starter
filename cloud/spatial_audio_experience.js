@@ -463,6 +463,12 @@ Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
   );
   return rooms;
 });
+Parse.Cloud.define("filterOutAudioRoomsId", async () => {
+  let rooms = [];
+
+  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL).findAll();
+  return allRooms.map(i => i.get("widgetId"));
+});
 
 Parse.Cloud.define("removeAudioRoom", async ({ params }) => {
   const { widgetId, muralId } = params;
