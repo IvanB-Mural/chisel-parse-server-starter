@@ -453,20 +453,20 @@ const filterAudioPersonasFields = person => ({
 // -----------CLOUD-----------------------------------------------------------------------------------------------------
 
 Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
-  const { widgetIds } = params;
+  const { widgetIds, muralId } = params;
   let rooms = [];
-
-  await new Parse.Query(AUDIO_ROOM_MODEL).each(
-    async el =>
-      widgetIds.includes(await el.get("widgetId")) &&
-      rooms.push(await el.toJSON())
-  );
+  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL).equalTo("muralId", muralId).find();
+  if (allRooms.length) {
+    allRooms.forEach(
+      room => widgetIds.includes(room.get("widgetId")) && rooms.push(room.toJSON())
+    );
+  }
   return rooms;
 });
-Parse.Cloud.define("filterOutAudioRoomsId", async () => {
-  let rooms = [];
+Parse.Cloud.define("filterOutAudioRoomsId", async ({ params }) => {
+  const { muralId } = params;
 
-  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL).findAll();
+  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL).equalTo("muralId", muralId).find();
   return allRooms.map(i => i.get("widgetId"));
 });
 
