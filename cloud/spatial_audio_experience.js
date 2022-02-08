@@ -1,155 +1,8 @@
 const AUDIO_ROOM_MODEL = "AudioRoom";
 const AUDIO_PERSON = "AudioPerson";
-const MUTED_USERS = "MutedUsers";
-const KICKED_USERS = "KickedUsers";
-const SPACE_MAPPING_MODEL = "SpaceMapping";
 const USERS_AUDIO = "UsersAudio";
 const ROOMS_AUDIO = "RoomsAudio";
 
-
-/**
- * Play the audio from a file into a High Fidelity Space. The audio will loop indefinitely.
- *
- * @param {string} audioPath - Path to an `.mp3` or `.wav` audio file
- * @param {object} position - The {x, y, z} point at which to spatialize the audio.
- * @param {number} hiFiGain - Set above 1 to boost the volume of the bot, or set below 1 to attenuate the volume of the bot.
- */
- async function startAudioBox(
-  audioPath,
-  position,
-  hiFiGain,
-  hiFiJWT,
-  isBroadcast = false
-) {
-  // Make sure we've been passed an `audioPath`...
-  if (!audioPath) {
-    console.error(
-      `Audio file path not specified! Please specify an audio path with "--audio "`
-    );
-    return;
-  }
-
-  // Make sure the `audioPath` we've been passed is actually a file that exists on the filesystem...
-  if (!fs.statSync(audioPath).isFile()) {
-    console.error(`Specified path "${audioPath}" is not a file!`);
-    return;
-  }
-
-  // Make sure that the file at `audioPath` is a `.mp3` or a `.wav` file.
-  let audioFileExtension = path.extname(audioPath).toLowerCase();
-  if (!(audioFileExtension === ".mp3" || audioFileExtension === ".wav")) {
-    console.error(`Specified audio file must be a \`.mp3\` or a \`.wav\`!\
-Instead, it's a \`${audioFileExtension}\``);
-    return;
-  }
-
-  // Read the audio file from our local filesystem into a file buffer.
-  const fileBuffer = fs.readFileSync(audioPath),
-    // Decode the audio file buffer into an AudioBuffer object.
-    audioBuffer = await decode(fileBuffer),
-    // Obtain various necessary pieces of information about the audio file.
-    { numberOfChannels, sampleRate, length, duration } = audioBuffer,
-    // Get the correct format of the `audioBuffer`.
-    parsed = format.detect(audioBuffer),
-    // Convert the parsed `audioBuffer` into the proper format.
-    convertedAudioBuffer = convert(audioBuffer, parsed, "int16"),
-    // Define the number of bits per sample encoded into the original audio file. `16` is a commonly-used number. The DJ Bot may malfunction
-    // if the audio file specified is encoded using a different number of bits per sample.
-    BITS_PER_SAMPLE = 16,
-    // Define the interval at which we want to fill the sample data being streamed into the `MediaStream` sent up to the Server.
-    // `wrtc` expects this to be 10ms.
-    TICK_INTERVAL_MS = 10,
-    // There are 1000 milliseconds per second :)
-    MS_PER_SEC = 1000,
-    // The number of times we fill up the audio buffer per second.
-    TICKS_PER_SECOND = MS_PER_SEC / TICK_INTERVAL_MS,
-    // The number of audio samples present in the `MediaStream` audio buffer per tick.
-    SAMPLES_PER_TICK = sampleRate / TICKS_PER_SECOND,
-    // Contains the audio sample data present in the `MediaStream` audio buffer sent to the Server.
-    currentSamples = new Int16Array(numberOfChannels * SAMPLES_PER_TICK),
-    // Contains all of the data necessary to pass to our `RTCAudioSource()`, which is sent to the Server.
-    currentAudioData = {
-      samples: currentSamples,
-      sampleRate,
-      bitsPerSample: BITS_PER_SAMPLE,
-      channelCount: numberOfChannels,
-      numberOfFrames: SAMPLES_PER_TICK
-    },
-    // The `MediaStream` sent to the server consists of an "Audio Source" and, within that Source, a single "Audio Track".
-    source = new RTCAudioSource(),
-    track = source.createTrack(),
-    // This is the final `MediaStream` sent to the server. The data within that `MediaStream` will be updated on an interval.
-    inputAudioMediaStream = new MediaStream([track]);
-
-  const initData = {
-    position: new Point3D(position),
-    hiFiGain: hiFiGain
-  };
-
-  // set extremely small attanuation effectively making the source to broadcast
-  if (isBroadcast) {
-    initData.userAttenuation = 0.0000000001;
-    initData.userRolloff = 9999999999;
-  }
-
-  // Define the initial HiFi Audio API Data used when connecting to the Spatial Audio API.
-  const initialHiFiAudioAPIData = new HiFiAudioAPIData(initData),
-    // Set up the HiFiCommunicator used to communicate with the Spatial Audio API.
-    hifiCommunicator = new HiFiCommunicator({ initialHiFiAudioAPIData });
-
-  // Set the Input Audio Media Stream to the `MediaStream` we created above. We'll fill it up with data below.
-  await hifiCommunicator.setInputAudioMediaStream(inputAudioMediaStream);
-
-  // `sampleNumber` defines where we are in the decoded audio stream from above. `0` means "we're at the beginning of the audio file".
-  let sampleNumber = 0;
-  // Called once every `TICK_INTERVAL_MS` milliseconds.
-  let tick = () => {
-    // This `for()` loop fills up `currentSamples` with the right amount of raw audio data grabbed from the correct position
-    // in the decoded audio file.
-    for (
-      let frameNumber = 0;
-      frameNumber < SAMPLES_PER_TICK;
-      frameNumber++, sampleNumber++
-    ) {
-      for (
-        let channelNumber = 0;
-        channelNumber < numberOfChannels;
-        channelNumber++
-      ) {
-        currentSamples[frameNumber * numberOfChannels + channelNumber] =
-          convertedAudioBuffer[
-            sampleNumber * numberOfChannels + channelNumber
-          ] || 0;
-      }
-    }
-
-    // This is the function that actually modifies the `MediaStream` we're sending to the Server.
-    source.onData(currentAudioData);
-
-    // Check if we're at the end of our audio file. If so, reset the `sampleNumber` so that we loop.
-    if (sampleNumber > length) {
-      sampleNumber = 0;
-    }
-  };
-
-  // Connect to our High Fidelity Space.
-  let connectResponse;
-  try {
-    connectResponse = await hifiCommunicator.connectToHiFiAudioAPIServer(
-      hiFiJWT
-    );
-  } catch (e) {
-    console.error(`Call to \`connectToHiFiAudioAPIServer()\` failed! Error:\
-${JSON.stringify(e)}`);
-    return;
-  }
-
-  // Set up the `preciseInterval` used to regularly update the `MediaStream` we're sending to the Server.
-  preciseInterval(tick, TICK_INTERVAL_MS);
-
-  console.log(`DJ Bot connected. Let's DANCE!`);
-  // return hifiCommunicator;
-}
 
 
 const createAudioPersonObject = async (dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId) => {
@@ -167,135 +20,6 @@ const createAudioPersonObject = async (dolbyId, userId, muralId, widgetId, coord
 
   return newPerson;
 };
-
-const createMutedAudioPersonObject = async (muralId, userId, muted) => {
-  const MutedAudioPerson = await Parse.Object.extend(MUTED_USERS);
-  const newMutedPerson = new MutedAudioPerson();
-
-  newMutedPerson.set("userId", userId);
-  newMutedPerson.set("muralId", muralId);
-  newMutedPerson.set("muted", muted);
-
-  return newMutedPerson;
-};
-
-const registerMutedAudioPerson = async (muralId, userId, muted) => {
-  try {
-    const newRoom = await createMutedAudioPersonObject(muralId, userId, muted);
-    await newRoom.save();
-    return newRoom;
-  } catch (e) {
-    console.log("error in registerMutedAudioPerson ", e);
-  }
-};
-
-Parse.Cloud.define("registerMutedAudioPerson", async ({ params }) => {
-  const { muralId, userId, muted } = params;
-
-  const mutedUserExists = await new Parse.Query(MUTED_USERS)
-    .equalTo("userId", userId)
-    .first();
-
-  if (!mutedUserExists) {
-    const mutedAudioPerson = await registerMutedAudioPerson(muralId, userId, muted);
-    return mutedAudioPerson;
-  }
-});
-
-Parse.Cloud.define("getMutedAudioPersonas", async ({ params }) => {
-  const personas = await new Parse.Query(MUTED_USERS)
-    .equalTo("muralId", params.muralId)
-    .find();
-
-  return personas.map(filterAudioPersonasFields);
-});
-
-const createKickedAudioPersonObject = async (muralId, userId, kicked) => {
-  const KickedAudioPerson = await Parse.Object.extend(KICKED_USERS);
-  const newKickedPerson = new KickedAudioPerson();
-
-  newKickedPerson.set("userId", userId);
-  newKickedPerson.set("muralId", muralId);
-  newKickedPerson.set("kicked", kicked);
-
-  return newKickedPerson;
-};
-
-const registerKickedAudioPerson = async (muralId, userId, kicked) => {
-  try {
-    const newKickedUser = await createKickedAudioPersonObject(muralId, userId, kicked);
-    await newKickedUser.save();
-    return newKickedUser;
-  } catch (e) {
-    console.log("error in registerKickedAudioPerson ", e);
-  }
-};
-
-Parse.Cloud.define("registerKickedAudioPerson", async ({ params }) => {
-  const { muralId, userId, kicked } = params;
-
-  const kickedUserExists = await new Parse.Query(KICKED_USERS)
-    .equalTo("userId", userId)
-    .first();
-
-  if (!kickedUserExists) {
-    const kickedAudioPerson = await registerKickedAudioPerson(muralId, userId, kicked);
-    return kickedAudioPerson;
-  }
-});
-
-Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
-  const { widgetId, muralId, width, height, x, y } = params;
-
-  const AudioRoomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("widgetId", widgetId)
-    .first();
-
-  if (AudioRoomExists) {
-    await AudioRoomExists.destroy();
-  }
-
-  const AudioRoom = await Parse.Object.extend(AUDIO_ROOM_MODEL);
-
-  const newRoom = new AudioRoom();
-  newRoom.set("widgetId", widgetId);
-  newRoom.set("muralId", muralId);
-  newRoom.set("width", width);
-  newRoom.set("height", height);
-  newRoom.set("x", x);
-  newRoom.set("y", y);
-
-  return await newRoom.save();
-});
-
-Parse.Cloud.define("defineActiveAudioRoom", async ({ params }) => {
-  const { widgetId } = params;
-
-  const roomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("widgetId", widgetId).find();
-
-    if (roomExists.length) {
-      roomExists.forEach(
-        room => widgetId.includes(room.get("widgetId")) && room.set("active", true) && room.save()
-      );
-    }
-    return roomExists;
-});
-
-Parse.Cloud.define("defineEmptyAudioRoom", async ({ params }) => {
-  const { widgetId } = params;
-
-  const roomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("widgetId", widgetId).find();
-
-    if (roomExists.length) {
-      roomExists.forEach(
-        room => widgetId.includes(room.get("widgetId")) && room.set("active", false) && room.save()
-      );
-    }
-    return roomExists;
-});
-
 
 const registerAudioPerson = async (dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId) => {
   try {
@@ -325,59 +49,30 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
   return { audioPerson: audioPerson.toJSON() };
 });
 
-Parse.Cloud.define("updateAudioPersonRoomId", async ({ params }) => {
-  const { widgetId, roomId } = params;
 
-  const userExists = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("widgetId", widgetId).find();
+Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
+  const { widgetId, muralId, width, height, x, y } = params;
 
-    if (userExists.length) {
-      userExists.forEach(
-        user => widgetId.includes(user.get("widgetId")) && user.set("roomId", roomId) && user.save()
-      );
-    }
-    return userExists;
+  const AudioRoomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("widgetId", widgetId)
+    .first();
+
+  if (AudioRoomExists) {
+    await AudioRoomExists.destroy();
+  }
+
+  const AudioRoom = await Parse.Object.extend(AUDIO_ROOM_MODEL);
+
+  const newRoom = new AudioRoom();
+  newRoom.set("widgetId", widgetId);
+  newRoom.set("muralId", muralId);
+  newRoom.set("width", width);
+  newRoom.set("height", height);
+  newRoom.set("x", x);
+  newRoom.set("y", y);
+
+  return await newRoom.save();
 });
-
-Parse.Cloud.define("updateAudioPersonDolbyId", async ({ params }) => {
-  const { widgetId, dolbyId } = params;
-
-  const userExists = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("widgetId", widgetId).find();
-
-    if (userExists.length) {
-      userExists.forEach(
-        user => widgetId.includes(user.get("widgetId")) && user.set("dolbyId", dolbyId) && user.save()
-      );
-    }
-    return userExists;
-});
-
-
-Parse.Cloud.define("updateAudioPersonCoordinates", async ({ params }) => {
-  const { widgetId, coordinates } = params;
-
-  const userExists = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("widgetId", widgetId).find();
-
-    if (userExists.length) {
-      userExists.forEach(
-        user => widgetId.includes(user.get("widgetId")) && user.set("coordinates", coordinates) && user.save()
-      );
-    }
-    return userExists;
-});
-
-const filterAudioPersonasFields = person => ({
-  roomId: person.get("roomId"),
-  dolbyId: person.get("dolbyId"),
-  userId: person.get("userId"),
-  muralId: person.get("muralId"),
-  widgetId: person.get("widgetId"),
-  coordinates: person.get("coordinates")
-});
-
-// -----------CLOUD-----------------------------------------------------------------------------------------------------
 
 Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
   const { widgetIds, muralId } = params;
@@ -419,14 +114,6 @@ Parse.Cloud.define("getAudioPersonas", async ({ params }) => {
   return personas;
 });
 
-Parse.Cloud.define("getAudioPersonasByRoom", async ({ params }) => {
-  const personas = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("roomId", params.roomId)
-    .find();
-
-  return personas.map(filterAudioPersonasFields);
-});
-
 Parse.Cloud.define("getAudioPerson", async ({ params }) => {
   const person = await new Parse.Query(AUDIO_PERSON)
     .equalTo("widgetId", params.widgetId)
@@ -441,13 +128,6 @@ const filterAudioRoomsFields = person => ({
   active: person.get("active"),
 });
 
-Parse.Cloud.define("getAudioRooms", async ({ params }) => {
-  const rooms = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("muralId", params.muralId)
-    .find();
-
-  return rooms.map(filterAudioRoomsFields);
-});
 
 Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
   const { userIds, muralId } = params;
@@ -468,20 +148,6 @@ Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
       }
     }
     
-  }
-});
-
-Parse.Cloud.define("removeMutedAudioPersonas", async ({ params }) => {
-  const { muralId, userIds } = params;
-
-  const personasQuery = await new Parse.Query(MUTED_USERS)
-    .equalTo("muralId", muralId)
-    .find();
-
-  if (personasQuery.length) {
-    personasQuery.forEach(
-      person => userIds.includes(person.get("userId")) && person.destroy()
-    );
   }
 });
 
@@ -602,4 +268,36 @@ Parse.Cloud.define("removeRoomAudio", async ({ params }) => {
     );
   }
   return params;
+});
+
+Parse.Cloud.define("getRoomStatistics", async ({ params }) => {
+  const {roomId, muralId} = params;
+  roomsStat = {
+    active: 0,
+    empty: 0,
+  }
+  
+  const getRooms = new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("muralId", muralId)
+    .find();
+  
+  const getUsers = new Parse.Query(AUDIO_PERSON)
+    .equalTo("muralId", muralId)
+    .find();
+
+  const [rooms, users] = await Promise.all([getRooms, getUsers]);
+
+  const usersInRoom = users.filter(i => i.get("roomId") === roomId);
+  for (const room of rooms) {
+    const inRoom = users.filter(i => i.get("roomId") === room.get("widgetId"));
+    if (inRoom.length) {
+      roomsStat.active ++;
+    } else {
+      roomsStat.empty ++;
+    }
+  }
+  const activeUsersId = users.map(i => i.get('userId'));
+
+  return {usersInRoom: usersInRoom.length, activeRooms: roomsStat.active, emptyRooms: roomsStat.empty, activeUsersId: activeUsersId};
+  
 });
