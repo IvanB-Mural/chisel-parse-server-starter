@@ -1,7 +1,3 @@
-const { hifiAudioConfig } = require("./common");
-const crypto = require("crypto");
-const { SignJWT } = require("jose/dist/node/cjs/jwt/sign");
-
 const AUDIO_ROOM_MODEL = "AudioRoom";
 const AUDIO_PERSON = "AudioPerson";
 const MUTED_USERS = "MutedUsers";
@@ -10,35 +6,6 @@ const SPACE_MAPPING_MODEL = "SpaceMapping";
 const USERS_AUDIO = "UsersAudio";
 const ROOMS_AUDIO = "RoomsAudio";
 
-Parse.Cloud.define("generateAudioJWT", async request => {
-  const { userID, vulcanSpaceId, spaceName } = request.params;
-  const hifiJWT = await generateAudioJWT(userID, vulcanSpaceId, spaceName);
-  return hifiJWT;
-});
-
-const generateAudioJWT = async (userID, vulcanSpaceId, spaceName) => {
-  let hiFiJWT;
-  try {
-   // const spaceId = await findOrGenerateSpace(vulcanSpaceId, spaceName);
-
-    // - generate JWT with above space Id and given user ID
-    const SECRET_KEY_FOR_SIGNING = crypto.createSecretKey(
-      Buffer.from("JC1eKQRYVxTDppaLG1oMaGfhHTx4DvJyI_mOXfwePZs=", "utf8")
-    );
-    hiFiJWT = await new SignJWT({
-      user_id: userID,
-      app_id: vulcanSpaceId,
-      space_id: spaceName
-    })
-      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-      .sign(SECRET_KEY_FOR_SIGNING);
-
-    return hiFiJWT;
-  } catch (error) {
-    console.error(`Couldn't create JWT! Error:\n${error}`);
-    return null;
-  }
-};
 
 /**
  * Play the audio from a file into a High Fidelity Space. The audio will loop indefinitely.
@@ -183,46 +150,6 @@ ${JSON.stringify(e)}`);
   console.log(`DJ Bot connected. Let's DANCE!`);
   // return hifiCommunicator;
 }
-
-// Hifi Spatial Audio Token
-// - Check Parse server for existing space token, return if found
-// - generate one if doesn't exist,
-// - store newly generated one into Parse
-const findOrGenerateSpace = async (vulcanSpaceId, name) => {
-  try {
-    // Find the existing one first.
-    const spaceQuery = new Parse.Query(SPACE_MAPPING_MODEL);
-    spaceQuery.equalTo("vulcan_space_id", vulcanSpaceId);
-    const spaceRecord = await spaceQuery.first({ useMasterKey: true });
-
-    if (!spaceRecord || !spaceRecord.get("space_token")) {
-      // When no existing record, generate one.
-      const spaceToken = await generateAudioJWT(vulcanSpaceId, name, name);
-      if (spaceToken === null) throw "No space token generated";
-
-      // Store newly generated one into Parse Server
-      const SpaceMapping = Parse.Object.extend(SPACE_MAPPING_MODEL);
-      const newSpaceMappingObject = new SpaceMapping();
-      newSpaceMappingObject.set("name", name);
-      newSpaceMappingObject.set("vulcan_space_id", vulcanSpaceId);
-      newSpaceMappingObject.set("space_token", spaceToken);
-      await newSpaceMappingObject.save();
-      return spaceToken;
-    }
-    return spaceRecord.get("space_token");
-  } catch (e) {
-    console.log("error in findOrGenerateSpace", e);
-  }
-};
-
-Parse.Cloud.define("findOrGenerateSpace", async request => {
-  const { vulcanSpaceId, name } = request.params;
-  const spaceToken = await findOrGenerateSpace(vulcanSpaceId, name);
-  return spaceToken;
-});
-
-
-
 
 
 const createAudioPersonObject = async (dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId) => {
