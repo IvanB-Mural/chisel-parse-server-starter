@@ -228,7 +228,7 @@ Parse.Cloud.define("getUsersAudio", async ({ params }) => {
 });
 
 //Rooms audio 
-const createRoomsAudioObject = async (audioId, userId, muralId, linkToAudio, roomId, autoplay, name) => {
+const createRoomsAudioObject = async (audioId, userId, muralId, linkToAudio, roomId, autoplay, name, loop, volume) => {
   const RoomsAudio = await Parse.Object.extend(ROOMS_AUDIO);
   const newRoomsAudio = new RoomsAudio();
 
@@ -239,13 +239,15 @@ const createRoomsAudioObject = async (audioId, userId, muralId, linkToAudio, roo
   newRoomsAudio.set("roomId", roomId);
   newRoomsAudio.set("autoplay", autoplay);
   newRoomsAudio.set("name", name);
+  newRoomsAudio.set("loop", loop);
+  newRoomsAudio.set("volume", volume);
 
   return newRoomsAudio;
 };
 
-const registerRoomsAudio = async (audioId, userId, muralId, linkToAudio, roomId, autoplay, name) => {
+const registerRoomsAudio = async (audioId, userId, muralId, linkToAudio, roomId, autoplay, name, loop, volume) => {
   try {
-    const newAudio = await createRoomsAudioObject(audioId, userId, muralId, linkToAudio, roomId, autoplay, name);
+    const newAudio = await createRoomsAudioObject(audioId, userId, muralId, linkToAudio, roomId, autoplay, name, loop, volume);
     await newAudio.save();
 
     return newAudio;
@@ -255,7 +257,7 @@ const registerRoomsAudio = async (audioId, userId, muralId, linkToAudio, roomId,
 };
 
 Parse.Cloud.define("registerRoomsAudio", async ({ params }) => {
-  const { audioId, userId, muralId, linkToAudio, roomId, autoplay, name } = params;
+  const { audioId, userId, muralId, linkToAudio, roomId, autoplay, name, loop, volume } = params;
 
   const RoomsAudioExists = await new Parse.Query(ROOMS_AUDIO)
     .equalTo("roomId", roomId)
@@ -264,7 +266,7 @@ Parse.Cloud.define("registerRoomsAudio", async ({ params }) => {
   if (RoomsAudioExists) {
     await RoomsAudioExists.destroy();
   }
-  const RoomsAudio = await registerRoomsAudio(audioId, userId, muralId, linkToAudio, roomId, autoplay, name);
+  const RoomsAudio = await registerRoomsAudio(audioId, userId, muralId, linkToAudio, roomId, autoplay, name, loop, volume);
   return RoomsAudio;
 });
 
