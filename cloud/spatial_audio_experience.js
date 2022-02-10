@@ -86,6 +86,7 @@ Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
   }
   return rooms;
 });
+
 Parse.Cloud.define("filterOutAudioRoomsId", async ({ params }) => {
   const { muralId } = params;
   let rooms = {};
@@ -114,7 +115,6 @@ Parse.Cloud.define('setStartingRoom', async ({ params }) => {
     .find();
 
   if (allRooms && allRooms.length) {
-    console.log('allRooms', allRooms)
     allRooms.find(
       room =>
         room.get('startStage') === true &&
