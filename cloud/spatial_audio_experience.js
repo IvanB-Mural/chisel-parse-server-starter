@@ -51,7 +51,7 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
 
 
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
-  const { widgetId, muralId, width, height, x, y } = params;
+  const { widgetId, muralId, width, height, x, y, startStage } = params;
 
   const AudioRoomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
     .equalTo("widgetId", widgetId)
@@ -70,6 +70,7 @@ Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
   newRoom.set("height", height);
   newRoom.set("x", x);
   newRoom.set("y", y);
+  newRoom.set("startStage", startStage);
 
   return await newRoom.save();
 });
@@ -87,9 +88,47 @@ Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
 });
 Parse.Cloud.define("filterOutAudioRoomsId", async ({ params }) => {
   const { muralId } = params;
+  let rooms = {};
 
   const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL).equalTo("muralId", muralId).find();
-  return allRooms.map(i => i.get("widgetId"));
+
+  if (allRooms.length) {
+    const allRoomsIds = allRooms.map(i => i.get("widgetId"));
+    rooms.allRoomsId = allRoomsIds;
+  
+    const startStage = allRooms.find(
+      room => room.get('startStage') === true,
+    );
+    rooms.startRoomId = startStage ? startStage.get('widgetId') : '';  
+  }
+  
+  return rooms;
+});
+
+Parse.Cloud.define('setStartingRoom', async ({ params }) => {
+  const { muralId, roomId } = params;
+  let rooms = [];
+
+  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo('muralId', muralId)
+    .find();
+
+  if (allRooms && allRooms.length) {
+    console.log('allRooms', allRooms)
+    allRooms.find(
+      room =>
+        room.get('startStage') === true &&
+        room.set('startStage', false) &&
+        room.save(),
+    );
+    allRooms.find(
+      room => room.get('widgetId') === roomId && 
+      room.set('startStage', true) &&
+      room.save() && 
+      rooms.push(room.toJSON()));
+  }
+
+  return rooms;
 });
 
 Parse.Cloud.define("removeAudioRoom", async ({ params }) => {
