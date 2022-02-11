@@ -3,12 +3,20 @@ const AUDIO_PERSON = "AudioPerson";
 const USERS_AUDIO = "UsersAudio";
 const ROOMS_AUDIO = "RoomsAudio";
 
-
-
-const createAudioPersonObject = async (dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId) => {
+const createAudioPersonObject = async (
+  dolbyId,
+  userId,
+  muralId,
+  widgetId,
+  coordinates,
+  muted,
+  facilitator,
+  roomId,
+  anchor
+) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
- 
+
   newPerson.set("dolbyId", dolbyId);
   newPerson.set("userId", userId);
   newPerson.set("muralId", muralId);
@@ -17,13 +25,34 @@ const createAudioPersonObject = async (dolbyId, userId, muralId, widgetId, coord
   newPerson.set("muted", muted);
   newPerson.set("facilitator", facilitator);
   newPerson.set("roomId", roomId);
+  newPerson.set("anchor", anchor);
 
   return newPerson;
 };
 
-const registerAudioPerson = async (dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId) => {
+const registerAudioPerson = async (
+  dolbyId,
+  userId,
+  muralId,
+  widgetId,
+  coordinates,
+  muted,
+  facilitator,
+  roomId,
+  anchor
+) => {
   try {
-    const newPerson = await createAudioPersonObject(dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId);
+    const newPerson = await createAudioPersonObject(
+      dolbyId,
+      userId,
+      muralId,
+      widgetId,
+      coordinates,
+      muted,
+      facilitator,
+      roomId,
+      anchor
+    );
     await newPerson.save();
 
     return await newPerson;
@@ -33,22 +62,43 @@ const registerAudioPerson = async (dolbyId, userId, muralId, widgetId, coordinat
 };
 
 Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
-  const { dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId } = params;
+  const {
+    dolbyId,
+    userId,
+    muralId,
+    widgetId,
+    coordinates,
+    muted,
+    facilitator,
+    roomId,
+    anchor
+  } = params;
   const personExists = await new Parse.Query(AUDIO_PERSON)
     .equalTo("userId", userId)
     .find();
 
-  const sameUser = personExists.length ? personExists.find(
-    user => user.get("muralId") === muralId
-  ) : null;
+  const sameUser = personExists.length
+    ? personExists.find(user => user.get("muralId") === muralId)
+    : null;
 
   if (sameUser) {
     sameUser.destroy();
   }
-  const audioPerson = await registerAudioPerson(dolbyId, userId, muralId, widgetId, coordinates, muted, facilitator, roomId);
+  const audioPerson = await registerAudioPerson(
+    dolbyId,
+    userId,
+    muralId,
+    widgetId,
+    coordinates,
+    muted,
+    facilitator,
+    roomId,
+    anchor
+  );
+
+  console.log(audioPerson, "<  AUDIO PERSON");
   return { audioPerson: audioPerson.toJSON() };
 });
-
 
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
   const { widgetId, muralId, width, height, x, y } = params;
@@ -77,10 +127,13 @@ Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
 Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
   const { widgetIds, muralId } = params;
   let rooms = [];
-  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL).equalTo("muralId", muralId).find();
+  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("muralId", muralId)
+    .find();
   if (allRooms.length) {
     allRooms.forEach(
-      room => widgetIds.includes(room.get("widgetId")) && rooms.push(room.toJSON())
+      room =>
+        widgetIds.includes(room.get("widgetId")) && rooms.push(room.toJSON())
     );
   }
   return rooms;
@@ -88,7 +141,9 @@ Parse.Cloud.define("filterOutAudioRooms", async ({ params }) => {
 Parse.Cloud.define("filterOutAudioRoomsId", async ({ params }) => {
   const { muralId } = params;
 
-  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL).equalTo("muralId", muralId).find();
+  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("muralId", muralId)
+    .find();
   return allRooms.map(i => i.get("widgetId"));
 });
 
@@ -125,29 +180,27 @@ Parse.Cloud.define("getAudioPerson", async ({ params }) => {
 const filterAudioRoomsFields = person => ({
   widgetId: person.get("widgetId"),
   muralId: person.get("muralId"),
-  active: person.get("active"),
+  active: person.get("active")
 });
-
 
 Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
   const { userIds, muralId } = params;
   const promiseArray = [];
   for (id of userIds) {
-    promiseArray.push(new Parse.Query(AUDIO_PERSON)
-    .equalTo("userId", id)
-    .find());
+    promiseArray.push(
+      new Parse.Query(AUDIO_PERSON).equalTo("userId", id).find()
+    );
   }
-  const personasQuery = await Promise.all(promiseArray)
+  const personasQuery = await Promise.all(promiseArray);
 
   if (personasQuery.length) {
     for (userArray of personasQuery) {
       for (user of userArray) {
         if (muralId === user.get("muralId")) {
-          user.destroy()
+          user.destroy();
         }
       }
     }
-    
   }
 });
 
@@ -188,8 +241,16 @@ Parse.Cloud.define("getUsersAudio", async ({ params }) => {
   return personas;
 });
 
-//Rooms audio 
-const createRoomsAudioObject = async (audioId, userId, muralId, linkToAudio, roomId, autoplay, name) => {
+//Rooms audio
+const createRoomsAudioObject = async (
+  audioId,
+  userId,
+  muralId,
+  linkToAudio,
+  roomId,
+  autoplay,
+  name
+) => {
   const RoomsAudio = await Parse.Object.extend(ROOMS_AUDIO);
   const newRoomsAudio = new RoomsAudio();
 
@@ -204,9 +265,25 @@ const createRoomsAudioObject = async (audioId, userId, muralId, linkToAudio, roo
   return newRoomsAudio;
 };
 
-const registerRoomsAudio = async (audioId, userId, muralId, linkToAudio, roomId, autoplay, name) => {
+const registerRoomsAudio = async (
+  audioId,
+  userId,
+  muralId,
+  linkToAudio,
+  roomId,
+  autoplay,
+  name
+) => {
   try {
-    const newAudio = await createRoomsAudioObject(audioId, userId, muralId, linkToAudio, roomId, autoplay, name);
+    const newAudio = await createRoomsAudioObject(
+      audioId,
+      userId,
+      muralId,
+      linkToAudio,
+      roomId,
+      autoplay,
+      name
+    );
     await newAudio.save();
 
     return newAudio;
@@ -216,7 +293,15 @@ const registerRoomsAudio = async (audioId, userId, muralId, linkToAudio, roomId,
 };
 
 Parse.Cloud.define("registerRoomsAudio", async ({ params }) => {
-  const { audioId, userId, muralId, linkToAudio, roomId, autoplay, name } = params;
+  const {
+    audioId,
+    userId,
+    muralId,
+    linkToAudio,
+    roomId,
+    autoplay,
+    name
+  } = params;
 
   const RoomsAudioExists = await new Parse.Query(ROOMS_AUDIO)
     .equalTo("roomId", roomId)
@@ -225,7 +310,15 @@ Parse.Cloud.define("registerRoomsAudio", async ({ params }) => {
   if (RoomsAudioExists) {
     await RoomsAudioExists.destroy();
   }
-  const RoomsAudio = await registerRoomsAudio(audioId, userId, muralId, linkToAudio, roomId, autoplay, name);
+  const RoomsAudio = await registerRoomsAudio(
+    audioId,
+    userId,
+    muralId,
+    linkToAudio,
+    roomId,
+    autoplay,
+    name
+  );
   return RoomsAudio;
 });
 
@@ -238,49 +331,43 @@ Parse.Cloud.define("getRoomsAudio", async ({ params }) => {
 });
 
 Parse.Cloud.define("removeUserAudio", async ({ params }) => {
-  
   const rooms = await new Parse.Query(ROOMS_AUDIO)
     .equalTo("audioId", params.objectId)
     .find();
   if (rooms.length) {
-    rooms.forEach(
-      room => room.destroy()
-    );
+    rooms.forEach(room => room.destroy());
   }
   const audio = await new Parse.Query(USERS_AUDIO)
     .equalTo("objectId", params.objectId)
     .first();
   audio.destroy();
 
-  const fileName = params.linkToAudio.split('/').pop();
+  const fileName = params.linkToAudio.split("/").pop();
   await new Parse.File(fileName).destroy();
   return params;
 });
 
 Parse.Cloud.define("removeRoomAudio", async ({ params }) => {
-  
   const rooms = await new Parse.Query(ROOMS_AUDIO)
     .equalTo("objectId", params.objectId)
     .find();
   if (rooms.length) {
-    rooms.forEach(
-      room => room.destroy()
-    );
+    rooms.forEach(room => room.destroy());
   }
   return params;
 });
 
 Parse.Cloud.define("getRoomStatistics", async ({ params }) => {
-  const {roomId, muralId} = params;
+  const { roomId, muralId } = params;
   roomsStat = {
     active: 0,
-    empty: 0,
-  }
-  
+    empty: 0
+  };
+
   const getRooms = new Parse.Query(AUDIO_ROOM_MODEL)
     .equalTo("muralId", muralId)
     .find();
-  
+
   const getUsers = new Parse.Query(AUDIO_PERSON)
     .equalTo("muralId", muralId)
     .find();
@@ -291,13 +378,17 @@ Parse.Cloud.define("getRoomStatistics", async ({ params }) => {
   for (const room of rooms) {
     const inRoom = users.filter(i => i.get("roomId") === room.get("widgetId"));
     if (inRoom.length) {
-      roomsStat.active ++;
+      roomsStat.active++;
     } else {
-      roomsStat.empty ++;
+      roomsStat.empty++;
     }
   }
-  const activeUsersId = users.map(i => i.get('userId'));
+  const activeUsersId = users.map(i => i.get("userId"));
 
-  return {usersInRoom: usersInRoom.length, activeRooms: roomsStat.active, emptyRooms: roomsStat.empty, activeUsersId: activeUsersId};
-  
+  return {
+    usersInRoom: usersInRoom.length,
+    activeRooms: roomsStat.active,
+    emptyRooms: roomsStat.empty,
+    activeUsersId: activeUsersId
+  };
 });
