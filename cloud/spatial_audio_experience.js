@@ -12,7 +12,9 @@ const createAudioPersonObject = async (
   muted,
   facilitator,
   roomId,
-  anchor
+  anchor,
+  audioDeviceId,
+  videoDeviceId
 ) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
@@ -26,6 +28,9 @@ const createAudioPersonObject = async (
   newPerson.set("facilitator", facilitator);
   newPerson.set("roomId", roomId);
   newPerson.set("anchor", anchor);
+  newPerson.set("audioDeviceId", audioDeviceId);
+  newPerson.set("videoDeviceId", videoDeviceId);
+
 
   return newPerson;
 };
@@ -39,7 +44,9 @@ const registerAudioPerson = async (
   muted,
   facilitator,
   roomId,
-  anchor
+  anchor,
+  audioDeviceId,
+  videoDeviceId
 ) => {
   try {
     const newPerson = await createAudioPersonObject(
@@ -51,7 +58,9 @@ const registerAudioPerson = async (
       muted,
       facilitator,
       roomId,
-      anchor
+      anchor,
+      audioDeviceId,
+      videoDeviceId
     );
     await newPerson.save();
 
@@ -71,7 +80,9 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
     muted,
     facilitator,
     roomId,
-    anchor
+    anchor,
+    audioDeviceId,
+    videoDeviceId
   } = params;
   const personExists = await new Parse.Query(AUDIO_PERSON)
     .equalTo("userId", userId)
@@ -93,10 +104,11 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
     muted,
     facilitator,
     roomId,
-    anchor
+    anchor,
+    audioDeviceId,
+    videoDeviceId
   );
 
-  console.log(audioPerson, "<  AUDIO PERSON");
   return { audioPerson: audioPerson.toJSON() };
 });
 
@@ -210,7 +222,7 @@ Parse.Cloud.define("getAudioPersonas", async ({ params }) => {
 
 Parse.Cloud.define("getAudioPerson", async ({ params }) => {
   const person = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("widgetId", params.widgetId)
+    .equalTo("userId", params.userId)
     .find();
 
   return person;
