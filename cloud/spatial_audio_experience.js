@@ -438,7 +438,7 @@ Parse.Cloud.define("getRoomStatistics", async ({ params }) => {
 
   const [rooms, users] = await Promise.all([getRooms, getUsers]);
 
-  const usersInRoom = users.filter(i => i.get("roomId") === roomId);
+  const usersInRoom = users.filter(i => i.get("roomId") === roomId && i.get("userId"));
   for (const room of rooms) {
     const inRoom = users.filter(i => i.get("roomId") === room.get("widgetId"));
     if (inRoom.length) {
@@ -447,12 +447,10 @@ Parse.Cloud.define("getRoomStatistics", async ({ params }) => {
       roomsStat.empty++;
     }
   }
-  const activeUsersId = users.map(i => i.get("userId"));
-
   return {
-    usersInRoom: usersInRoom.length,
+    usersInRoomId: usersInRoom.map(i => i.get("userId")),
     activeRooms: roomsStat.active,
     emptyRooms: roomsStat.empty,
-    activeUsersId: activeUsersId
+    activeUsersId: users.map(i => i.get("userId"))
   };
 });
