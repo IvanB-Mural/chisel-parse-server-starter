@@ -113,7 +113,7 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
 });
 
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
-  const { widgetId, muralId, width, height, x, y, startStage } = params;
+  const { widgetId, muralId, width, height, x, y, startStage, name } = params;
 
   const AudioRoomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
     .equalTo("widgetId", widgetId)
@@ -133,6 +133,7 @@ Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
   newRoom.set("x", x);
   newRoom.set("y", y);
   newRoom.set("startStage", startStage);
+  newRoom.set("name", name);
 
   return await newRoom.save();
 });
@@ -453,4 +454,13 @@ Parse.Cloud.define("getRoomStatistics", async ({ params }) => {
     emptyRooms: roomsStat.empty,
     activeUsersId: users.map(i => i.get("userId"))
   };
+});
+
+Parse.Cloud.define("getRooms", async ({ params }) => {
+  const { muralId } = params;
+
+  const getRooms = new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("muralId", muralId)
+    .find();
+  return (await getRooms).length ? getRooms : [];
 });
