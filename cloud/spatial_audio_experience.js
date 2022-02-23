@@ -114,10 +114,20 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
 
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
   const { widgetId, muralId, width, height, x, y, startStage, name } = params;
+  
+  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL)
+  .equalTo("muralId", muralId)
+  .find();
 
-  const AudioRoomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("widgetId", widgetId)
-    .first();
+  if (allRooms && allRooms.length && startStage) {
+    allRooms.find(
+      room =>
+        room.get("startStage") === true &&
+        room.set("startStage", false) &&
+        room.save()
+    );
+  }
+  const AudioRoomExists = allRooms.find(i => i.get("widgetId") === widgetId);
 
   if (AudioRoomExists) {
     await AudioRoomExists.destroy();
@@ -167,33 +177,6 @@ Parse.Cloud.define("filterOutAudioRoomsId", async ({ params }) => {
 
     const startStage = allRooms.find(room => room.get("startStage") === true);
     rooms.startRoomId = startStage ? startStage.get("widgetId") : "";
-  }
-
-  return rooms;
-});
-
-Parse.Cloud.define("setStartingRoom", async ({ params }) => {
-  const { muralId, roomId } = params;
-  let rooms = [];
-
-  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("muralId", muralId)
-    .find();
-
-  if (allRooms && allRooms.length) {
-    allRooms.find(
-      room =>
-        room.get("startStage") === true &&
-        room.set("startStage", false) &&
-        room.save()
-    );
-    allRooms.find(
-      room =>
-        room.get("widgetId") === roomId &&
-        room.set("startStage", true) &&
-        room.save() &&
-        rooms.push(room.toJSON())
-    );
   }
 
   return rooms;
