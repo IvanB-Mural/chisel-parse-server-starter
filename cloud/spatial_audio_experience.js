@@ -12,7 +12,9 @@ const createAudioPersonObject = async (
   muted,
   facilitator,
   roomId,
-  anchor
+  anchor,
+  audioDeviceId,
+  videoDeviceId
 ) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
@@ -26,6 +28,9 @@ const createAudioPersonObject = async (
   newPerson.set("facilitator", facilitator);
   newPerson.set("roomId", roomId);
   newPerson.set("anchor", anchor);
+  newPerson.set("audioDeviceId", audioDeviceId);
+  newPerson.set("videoDeviceId", videoDeviceId);
+
 
   return newPerson;
 };
@@ -39,7 +44,9 @@ const registerAudioPerson = async (
   muted,
   facilitator,
   roomId,
-  anchor
+  anchor,
+  audioDeviceId,
+  videoDeviceId
 ) => {
   try {
     const newPerson = await createAudioPersonObject(
@@ -51,7 +58,9 @@ const registerAudioPerson = async (
       muted,
       facilitator,
       roomId,
-      anchor
+      anchor,
+      audioDeviceId,
+      videoDeviceId
     );
     await newPerson.save();
 
@@ -71,7 +80,9 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
     muted,
     facilitator,
     roomId,
-    anchor
+    anchor,
+    audioDeviceId,
+    videoDeviceId
   } = params;
   const personExists = await new Parse.Query(AUDIO_PERSON)
     .equalTo("userId", userId)
@@ -93,19 +104,30 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
     muted,
     facilitator,
     roomId,
-    anchor
+    anchor,
+    audioDeviceId,
+    videoDeviceId
   );
 
-  console.log(audioPerson, "<  AUDIO PERSON");
   return { audioPerson: audioPerson.toJSON() };
 });
 
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
-  const { widgetId, muralId, width, height, x, y, startStage } = params;
+  const { widgetId, muralId, width, height, x, y, startStage, name } = params;
+  
+  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL)
+  .equalTo("muralId", muralId)
+  .find();
 
-  const AudioRoomExists = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("widgetId", widgetId)
-    .first();
+  if (allRooms && allRooms.length && startStage) {
+    allRooms.find(
+      room =>
+        room.get("startStage") === true &&
+        room.set("startStage", false) &&
+        room.save()
+    );
+  }
+  const AudioRoomExists = allRooms.find(i => i.get("widgetId") === widgetId);
 
   if (AudioRoomExists) {
     await AudioRoomExists.destroy();
@@ -121,6 +143,7 @@ Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
   newRoom.set("x", x);
   newRoom.set("y", y);
   newRoom.set("startStage", startStage);
+  newRoom.set("name", name);
 
   return await newRoom.save();
 });
@@ -159,33 +182,6 @@ Parse.Cloud.define("filterOutAudioRoomsId", async ({ params }) => {
   return rooms;
 });
 
-Parse.Cloud.define("setStartingRoom", async ({ params }) => {
-  const { muralId, roomId } = params;
-  let rooms = [];
-
-  const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL)
-    .equalTo("muralId", muralId)
-    .find();
-
-  if (allRooms && allRooms.length) {
-    allRooms.find(
-      room =>
-        room.get("startStage") === true &&
-        room.set("startStage", false) &&
-        room.save()
-    );
-    allRooms.find(
-      room =>
-        room.get("widgetId") === roomId &&
-        room.set("startStage", true) &&
-        room.save() &&
-        rooms.push(room.toJSON())
-    );
-  }
-
-  return rooms;
-});
-
 Parse.Cloud.define("removeAudioRoom", async ({ params }) => {
   const { widgetId, muralId } = params;
 
@@ -210,7 +206,7 @@ Parse.Cloud.define("getAudioPersonas", async ({ params }) => {
 
 Parse.Cloud.define("getAudioPerson", async ({ params }) => {
   const person = await new Parse.Query(AUDIO_PERSON)
-    .equalTo("widgetId", params.widgetId)
+    .equalTo("userId", params.userId)
     .find();
 
   return person;
@@ -441,4 +437,13 @@ Parse.Cloud.define("getRoomStatistics", async ({ params }) => {
     emptyRooms: roomsStat.empty,
     activeUsersId: users.map(i => i.get("userId"))
   };
+});
+
+Parse.Cloud.define("getRooms", async ({ params }) => {
+  const { muralId } = params;
+
+  const getRooms = new Parse.Query(AUDIO_ROOM_MODEL)
+    .equalTo("muralId", muralId)
+    .find();
+  return (await getRooms).length ? getRooms : [];
 });
