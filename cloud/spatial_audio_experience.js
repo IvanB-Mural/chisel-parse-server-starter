@@ -14,7 +14,8 @@ const createAudioPersonObject = async (
   roomId,
   anchor,
   audioDeviceId,
-  videoDeviceId
+  videoDeviceId,
+  videoPlaying
 ) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
@@ -30,6 +31,7 @@ const createAudioPersonObject = async (
   newPerson.set("anchor", anchor);
   newPerson.set("audioDeviceId", audioDeviceId);
   newPerson.set("videoDeviceId", videoDeviceId);
+  newPerson.set("videoPlaying", videoPlaying);
 
 
   return newPerson;
@@ -46,7 +48,8 @@ const registerAudioPerson = async (
   roomId,
   anchor,
   audioDeviceId,
-  videoDeviceId
+  videoDeviceId,
+  videoPlaying
 ) => {
   try {
     const newPerson = await createAudioPersonObject(
@@ -60,7 +63,8 @@ const registerAudioPerson = async (
       roomId,
       anchor,
       audioDeviceId,
-      videoDeviceId
+      videoDeviceId,
+      videoPlaying
     );
     await newPerson.save();
 
