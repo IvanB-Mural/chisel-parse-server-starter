@@ -14,7 +14,8 @@ const createAudioPersonObject = async (
   roomId,
   anchor,
   audioDeviceId,
-  videoDeviceId
+  videoDeviceId,
+  videoPlaying
 ) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
@@ -30,6 +31,7 @@ const createAudioPersonObject = async (
   newPerson.set("anchor", anchor);
   newPerson.set("audioDeviceId", audioDeviceId);
   newPerson.set("videoDeviceId", videoDeviceId);
+  newPerson.set("videoPlaying", videoPlaying);
 
 
   return newPerson;
@@ -46,7 +48,8 @@ const registerAudioPerson = async (
   roomId,
   anchor,
   audioDeviceId,
-  videoDeviceId
+  videoDeviceId,
+  videoPlaying
 ) => {
   try {
     const newPerson = await createAudioPersonObject(
@@ -60,7 +63,8 @@ const registerAudioPerson = async (
       roomId,
       anchor,
       audioDeviceId,
-      videoDeviceId
+      videoDeviceId,
+      videoPlaying
     );
     await newPerson.save();
 
@@ -240,20 +244,21 @@ Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
 });
 
 //Users audio
-const createUsersAudioObject = async (userId, linkToAudio, name) => {
+const createUsersAudioObject = async (userId, linkToAudio, name, internalName) => {
   const UsersAudio = await Parse.Object.extend(USERS_AUDIO);
   const newUsersAudio = new UsersAudio();
 
   newUsersAudio.set("userId", userId);
   newUsersAudio.set("linkToAudio", linkToAudio);
   newUsersAudio.set("name", name);
+  newUsersAudio.set("internalName", internalName);
 
   return newUsersAudio;
 };
 
-const registerUsersAudio = async (userId, linkToAudio, name) => {
+const registerUsersAudio = async (userId, linkToAudio, name, internalName) => {
   try {
-    const newAudio = await createUsersAudioObject(userId, linkToAudio, name);
+    const newAudio = await createUsersAudioObject(userId, linkToAudio, name, internalName);
     await newAudio.save();
     return newAudio;
   } catch (e) {
@@ -262,9 +267,9 @@ const registerUsersAudio = async (userId, linkToAudio, name) => {
 };
 
 Parse.Cloud.define("registerUsersAudio", async ({ params }) => {
-  const { userId, linkToAudio, name } = params;
+  const { userId, linkToAudio, name, internalName } = params;
 
-  const UsersAudio = await registerUsersAudio(userId, linkToAudio, name);
+  const UsersAudio = await registerUsersAudio(userId, linkToAudio, name, internalName);
   return UsersAudio;
 });
 
@@ -285,6 +290,7 @@ const createRoomsAudioObject = async (
   roomId,
   autoplay,
   name,
+  internalName,
   loop,
   volume
 ) => {
@@ -298,6 +304,7 @@ const createRoomsAudioObject = async (
   newRoomsAudio.set("roomId", roomId);
   newRoomsAudio.set("autoplay", autoplay);
   newRoomsAudio.set("name", name);
+  newRoomsAudio.set("internalName", internalName);
   newRoomsAudio.set("loop", loop);
   newRoomsAudio.set("volume", volume);
 
@@ -312,6 +319,7 @@ const registerRoomsAudio = async (
   roomId,
   autoplay,
   name,
+  internalName,
   loop,
   volume
 ) => {
@@ -324,6 +332,7 @@ const registerRoomsAudio = async (
       roomId,
       autoplay,
       name,
+      internalName,
       loop,
       volume
     );
@@ -344,6 +353,7 @@ Parse.Cloud.define("registerRoomsAudio", async ({ params }) => {
     roomId,
     autoplay,
     name,
+    internalName,
     loop,
     volume
   } = params;
@@ -364,6 +374,7 @@ Parse.Cloud.define("registerRoomsAudio", async ({ params }) => {
     roomId,
     autoplay,
     name,
+    internalName,
     loop,
     volume
   );
