@@ -15,7 +15,8 @@ const createAudioPersonObject = async (
   anchor,
   audioDeviceId,
   videoDeviceId,
-  videoPlaying
+  videoPlaying,
+  direction
 ) => {
   const AudioPerson = await Parse.Object.extend(AUDIO_PERSON);
   const newPerson = new AudioPerson();
@@ -32,7 +33,7 @@ const createAudioPersonObject = async (
   newPerson.set("audioDeviceId", audioDeviceId);
   newPerson.set("videoDeviceId", videoDeviceId);
   newPerson.set("videoPlaying", videoPlaying);
-
+  newPerson.set("direction", direction);
 
   return newPerson;
 };
@@ -49,7 +50,8 @@ const registerAudioPerson = async (
   anchor,
   audioDeviceId,
   videoDeviceId,
-  videoPlaying
+  videoPlaying,
+  direction
 ) => {
   try {
     const newPerson = await createAudioPersonObject(
@@ -64,7 +66,8 @@ const registerAudioPerson = async (
       anchor,
       audioDeviceId,
       videoDeviceId,
-      videoPlaying
+      videoPlaying,
+      direction
     );
     await newPerson.save();
 
@@ -86,7 +89,8 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
     roomId,
     anchor,
     audioDeviceId,
-    videoDeviceId
+    videoDeviceId,
+    direction
   } = params;
   const personExists = await new Parse.Query(AUDIO_PERSON)
     .equalTo("userId", userId)
@@ -110,7 +114,8 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
     roomId,
     anchor,
     audioDeviceId,
-    videoDeviceId
+    videoDeviceId,
+    direction
   );
 
   return { audioPerson: audioPerson.toJSON() };
@@ -118,10 +123,10 @@ Parse.Cloud.define("registerAudioPerson", async ({ params }) => {
 
 Parse.Cloud.define("registerAudioRoom", async ({ params }) => {
   const { widgetId, muralId, width, height, x, y, startStage, name } = params;
-  
+
   const allRooms = await new Parse.Query(AUDIO_ROOM_MODEL)
-  .equalTo("muralId", muralId)
-  .find();
+    .equalTo("muralId", muralId)
+    .find();
 
   if (allRooms && allRooms.length && startStage) {
     allRooms.find(
@@ -234,7 +239,7 @@ Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
 
   if (personasQuery.length) {
     for (userArray of personasQuery) {
-      for (user of userArray) {
+      for (user of userArrapy) {
         if (muralId === user.get("muralId")) {
           user.destroy();
         }
@@ -244,7 +249,12 @@ Parse.Cloud.define("removeAudioPersonas", async ({ params }) => {
 });
 
 //Users audio
-const createUsersAudioObject = async (userId, linkToAudio, name, internalName) => {
+const createUsersAudioObject = async (
+  userId,
+  linkToAudio,
+  name,
+  internalName
+) => {
   const UsersAudio = await Parse.Object.extend(USERS_AUDIO);
   const newUsersAudio = new UsersAudio();
 
@@ -258,7 +268,12 @@ const createUsersAudioObject = async (userId, linkToAudio, name, internalName) =
 
 const registerUsersAudio = async (userId, linkToAudio, name, internalName) => {
   try {
-    const newAudio = await createUsersAudioObject(userId, linkToAudio, name, internalName);
+    const newAudio = await createUsersAudioObject(
+      userId,
+      linkToAudio,
+      name,
+      internalName
+    );
     await newAudio.save();
     return newAudio;
   } catch (e) {
@@ -269,7 +284,12 @@ const registerUsersAudio = async (userId, linkToAudio, name, internalName) => {
 Parse.Cloud.define("registerUsersAudio", async ({ params }) => {
   const { userId, linkToAudio, name, internalName } = params;
 
-  const UsersAudio = await registerUsersAudio(userId, linkToAudio, name, internalName);
+  const UsersAudio = await registerUsersAudio(
+    userId,
+    linkToAudio,
+    name,
+    internalName
+  );
   return UsersAudio;
 });
 
@@ -433,7 +453,9 @@ Parse.Cloud.define("getRoomStatistics", async ({ params }) => {
 
   const [rooms, users] = await Promise.all([getRooms, getUsers]);
 
-  const usersInRoom = users.filter(i => i.get("roomId") === roomId && i.get("userId"));
+  const usersInRoom = users.filter(
+    i => i.get("roomId") === roomId && i.get("userId")
+  );
   for (const room of rooms) {
     const inRoom = users.filter(i => i.get("roomId") === room.get("widgetId"));
     if (inRoom.length) {
